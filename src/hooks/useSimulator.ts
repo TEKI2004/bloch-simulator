@@ -1,17 +1,66 @@
 import { useRef, useState } from "react";
 import { QubitState } from "../quantum/QubitState";
 import type { Matrix2 } from "../quantum/Matrix2";
-import { createInitialSimulatorState, MAX_STATES, DEFAULT_STATE_COLORS } from "../simulator/SimulatorState";
-import type { SimulatorState } from "../simulator/SimulatorState";
 import { P, Rx, Ry, Rz } from "../quantum/gates";
-import type { GateParameter } from "../simulator/SimulatorState";
+import { createInitialSimulatorState, DEFAULT_STATE_COLORS, MAX_STATES } from "../simulator/SimulatorState";
+import type { GateParameter, GateStep, SimulatorMode, SimulatorState } from "../simulator/SimulatorState";
+
+type GateTarget = "shared" | number;
+
+const gateFactories: Record<GateParameter["kind"], (angle: number) => Matrix2> = {
+  P,
+  Rx,
+  Ry,
+  Rz,
+};
+
+// Közös vagy egyéni kapusor módosítása
+function editGates(
+  current: SimulatorState,
+  target: GateTarget,
+  edit: (gates: GateStep[]) => GateStep[],
+  resetPosition = true,
+): SimulatorState {
+  if (target === "shared") {
+    const gates = edit(current.sharedGates);
+    if (gates === current.sharedGates) return current;
+
+    return {
+      ...current,
+      sharedGates: gates,
+      sharedStepIndex: resetPosition ? 0 : current.sharedStepIndex,
+    };
+  }
+
+  const tracked = current.states.find((state) => state.id === target);
+  if (!tracked) return current;
+
+  const gates = edit(tracked.individualGates);
+  if (gates === tracked.individualGates) return current;
+
+  return {
+    ...current,
+    states: current.states.map((state) =>
+      state.id === target
+        ? {
+            ...state,
+            individualGates: gates,
+            individualStepIndex: resetPosition ? 0 : state.individualStepIndex,
+          }
+        : state,
+    ),
+  };
+}
 
 export function useSimulator() {
   const [simulator, setSimulator] = useState<SimulatorState>(createInitialSimulatorState);
 
   const nextGateId = useRef(1);
 
-  // Állapotvektor hozzáadása
+  function setMode(mode: SimulatorMode) {
+    setSimulator((current) => (current.mode === mode ? current : { ...current, mode }));
+  }
+
   function addState(initialState = QubitState.zero()) {
     setSimulator((current) => {
       if (current.states.length >= MAX_STATES) return current;
@@ -37,23 +86,6 @@ export function useSimulator() {
     });
   }
 
-  // Állapotvektor kezdeti állapotának beállítása
-  function setInitialState(id: number, initialState: QubitState) {
-    setSimulator((current) => ({
-      ...current,
-      states: current.states.map((state) => (state.id === id ? { ...state, initialState: initialState.normalized() } : state)),
-    }));
-  }
-
-  // Állapotvektor színének beállítása
-  function setStateColor(id: number, color: string) {
-    setSimulator((current) => ({
-      ...current,
-      states: current.states.map((state) => (state.id === id ? { ...state, color } : state)),
-    }));
-  }
-
-  // Állapotvektor törlése
   function removeState(id: number) {
     setSimulator((current) => ({
       ...current,
@@ -61,118 +93,133 @@ export function useSimulator() {
     }));
   }
 
-  // Kapu hozzáadása a közös kapusorhoz
-  function addSharedGate(label: string, matrix: Matrix2, parameter?: GateParameter) {
+  function setInitialState(id: number, initialState: QubitState) {
+    const normalized = initialState.normalized();
+
+    setSimulator((current) => ({
+      ...current,
+      states: current.states.map((state) => (state.id === id ? { ...state, initialState: normalized } : state)),
+    }));
+  }
+
+  function setStateColor(id: number, color: string) {
+    setSimulator((current) => ({
+      ...current,
+      states: current.states.map((state) => (state.id === id ? { ...state, color } : state)),
+    }));
+  }
+
+  function addGate(target: GateTarget, label: string, matrix: Matrix2, parameter?: GateParameter) {
     const id = `gate-${nextGateId.current++}`;
 
-    setSimulator((current) => ({
-      ...current,
-      sharedGates: [...current.sharedGates, { id, label, matrix, parameter }],
-    }));
+    setSimulator((current) => editGates(current, target, (gates) => [...gates, { id, label, matrix, parameter }], false));
   }
 
-  // Kapu törlése a közös kapusorból
-  function removeSharedGate(id: string) {
-    setSimulator((current) => ({
-      ...current,
-      sharedGates: current.sharedGates.filter((gate) => gate.id !== id),
-      sharedStepIndex: 0,
-    }));
+  function removeGate(target: GateTarget, id: string) {
+    setSimulator((current) =>
+      editGates(current, target, (gates) => (gates.some((gate) => gate.id === id) ? gates.filter((gate) => gate.id !== id) : gates)),
+    );
   }
 
-  // Kapu mozgatása a közös kapusorban
-  function moveSharedGate(id: string, direction: -1 | 1) {
+  function moveGate(target: GateTarget, id: string, direction: -1 | 1) {
+    setSimulator((current) =>
+      editGates(current, target, (gates) => {
+        const index = gates.findIndex((gate) => gate.id === id);
+        const destination = index + direction;
+
+        if (index === -1 || destination < 0 || destination >= gates.length) {
+          return gates;
+        }
+
+        const result = [...gates];
+        const [gate] = result.splice(index, 1);
+        result.splice(destination, 0, gate);
+
+        return result;
+      }),
+    );
+  }
+
+  function updateGateAngle(target: GateTarget, id: string, degrees: number) {
+    if (!Number.isFinite(degrees)) return;
+
+    const angle = (degrees * Math.PI) / 180;
+
+    setSimulator((current) =>
+      editGates(current, target, (gates) => {
+        if (!gates.some((gate) => gate.id === id && gate.parameter)) {
+          return gates;
+        }
+
+        return gates.map((gate) => {
+          if (gate.id !== id || !gate.parameter) return gate;
+
+          const kind = gate.parameter.kind;
+
+          return {
+            ...gate,
+            label: `${kind}(${degrees}°)`,
+            matrix: gateFactories[kind](angle),
+            parameter: { kind, angle },
+          };
+        });
+      }),
+    );
+  }
+
+  function clearGates(target: GateTarget) {
+    setSimulator((current) => editGates(current, target, (gates) => (gates.length ? [] : gates)));
+  }
+
+  function changeStep(target: GateTarget, change: (step: number, length: number) => number) {
     setSimulator((current) => {
-      const gates = [...current.sharedGates];
-      const index = gates.findIndex((gate) => gate.id === id);
-      const target = index + direction;
+      if (target === "shared") {
+        const step = Math.max(0, Math.min(current.sharedGates.length, change(current.sharedStepIndex, current.sharedGates.length)));
 
-      if (index === -1 || target < 0 || target >= gates.length) {
-        return current;
+        if (step === current.sharedStepIndex) return current;
+
+        return { ...current, sharedStepIndex: step };
       }
-
-      const [gate] = gates.splice(index, 1);
-      gates.splice(target, 0, gate);
 
       return {
         ...current,
-        sharedGates: gates,
-        sharedStepIndex: 0,
+        states: current.states.map((state) => {
+          if (state.id !== target) return state;
+
+          const step = Math.max(0, Math.min(state.individualGates.length, change(state.individualStepIndex, state.individualGates.length)));
+
+          return { ...state, individualStepIndex: step };
+        }),
       };
     });
   }
 
-  // Kapu paraméterének frissítése a közös kapusorban
-  function updateSharedGateAngle(id: string, degrees: number) {
-    if (!Number.isFinite(degrees)) return;
-
-    const angle = (degrees * Math.PI) / 180;
-    const factories = { P, Rx, Ry, Rz };
-
-    setSimulator((current) => ({
-      ...current,
-      sharedGates: current.sharedGates.map((gate) => {
-        if (gate.id !== id || !gate.parameter) return gate;
-
-        const kind = gate.parameter.kind;
-
-        return {
-          ...gate,
-          label: `${kind}(${degrees}°)`,
-          matrix: factories[kind](angle),
-          parameter: { kind, angle },
-        };
-      }),
-      sharedStepIndex: 0,
-    }));
+  function nextStep(target: GateTarget) {
+    changeStep(target, (step) => step + 1);
   }
 
-  // Kapuk törlése a közös kapusorból
-  function clearSharedGates() {
-    setSimulator((current) => ({
-      ...current,
-      sharedGates: [],
-      sharedStepIndex: 0,
-    }));
+  function previousStep(target: GateTarget) {
+    changeStep(target, (step) => step - 1);
   }
 
-  // Visszaállítás a kezdőállapotokra
-  function resetShared() {
-    setSimulator((current) => ({
-      ...current,
-      sharedStepIndex: 0,
-    }));
-  }
-
-  // Következő kapu végrehajtása
-  function nextStep() {
-    setSimulator((current) => ({
-      ...current,
-      sharedStepIndex: Math.min(current.sharedStepIndex + 1, current.sharedGates.length),
-    }));
-  }
-
-  // Visszalépés az előző kapuhoz
-  function previousStep() {
-    setSimulator((current) => ({
-      ...current,
-      sharedStepIndex: Math.max(0, current.sharedStepIndex - 1),
-    }));
+  function resetSteps(target: GateTarget) {
+    changeStep(target, () => 0);
   }
 
   return {
     simulator,
+    setMode,
     addState,
+    removeState,
     setInitialState,
     setStateColor,
-    removeState,
-    addSharedGate,
-    removeSharedGate,
-    moveSharedGate,
-    updateSharedGateAngle,
-    clearSharedGates,
-    resetShared,
+    addGate,
+    removeGate,
+    moveGate,
+    updateGateAngle,
+    clearGates,
     nextStep,
     previousStep,
+    resetSteps,
   };
 }

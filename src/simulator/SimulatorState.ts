@@ -7,10 +7,16 @@ export const DEFAULT_STATE_COLORS = ["#22D3EE", "#FB923C", "#C084FC", "#4ADE80"]
 
 export type SimulatorMode = "shared" | "individual";
 
+export type GateParameter = {
+  kind: "P" | "Rx" | "Ry" | "Rz";
+  angle: number; // radián
+};
+
 export type GateStep = {
   id: string;
   label: string;
   matrix: Matrix2;
+  parameter?: GateParameter;
 };
 
 export type TrackedState = {

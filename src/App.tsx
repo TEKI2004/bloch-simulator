@@ -11,7 +11,6 @@ import type { Matrix2 } from "./quantum/Matrix2";
 import type { GateParameter } from "./simulator/SimulatorState";
 import { X, H, S, T, P, Rx, Ry, Rz } from "./quantum/gates";
 
-
 type GateOption = {
   label: string;
   matrix: Matrix2;
@@ -24,20 +23,24 @@ const gates: GateOption[] = [
   { label: "S", matrix: S },
   { label: "T", matrix: T },
   {
-    label: "P(90°)", matrix: P(Math.PI / 2),
-    parameter: { kind: "P", angle: Math.PI / 2 }
+    label: "P(90°)",
+    matrix: P(Math.PI / 2),
+    parameter: { kind: "P", angle: Math.PI / 2 },
   },
   {
-    label: "Rx(90°)", matrix: Rx(Math.PI / 2),
-    parameter: { kind: "Rx", angle: Math.PI / 2 }
+    label: "Rx(90°)",
+    matrix: Rx(Math.PI / 2),
+    parameter: { kind: "Rx", angle: Math.PI / 2 },
   },
   {
-    label: "Ry(90°)", matrix: Ry(Math.PI / 2),
-    parameter: { kind: "Ry", angle: Math.PI / 2 }
+    label: "Ry(90°)",
+    matrix: Ry(Math.PI / 2),
+    parameter: { kind: "Ry", angle: Math.PI / 2 },
   },
   {
-    label: "Rz(90°)", matrix: Rz(Math.PI / 2),
-    parameter: { kind: "Rz", angle: Math.PI / 2 }
+    label: "Rz(90°)",
+    matrix: Rz(Math.PI / 2),
+    parameter: { kind: "Rz", angle: Math.PI / 2 },
   },
 ];
 
@@ -53,18 +56,19 @@ const labels = ["|ψ₁⟩", "|ψ₂⟩", "|ψ₃⟩", "|ψ₄⟩"];
 export default function App() {
   const {
     simulator,
+    setMode,
     addState,
     removeState,
     setInitialState,
     setStateColor,
-    addSharedGate,
-    removeSharedGate,
-    moveSharedGate,
-    updateSharedGateAngle,
-    clearSharedGates,
-    resetShared,
+    addGate,
+    removeGate,
+    moveGate,
+    updateGateAngle,
+    clearGates,
     nextStep,
     previousStep,
+    resetSteps,
   } = useSimulator();
 
   const [selectedStateId, setSelectedStateId] = useState(1);
@@ -72,6 +76,18 @@ export default function App() {
   const selectedState =
     simulator.states.find((state) => state.id === selectedStateId)
     ?? simulator.states[0];
+
+  const target = simulator.mode === "shared"
+    ? "shared" as const
+    : (selectedState?.id ?? null);
+
+  const activeGates = simulator.mode === "shared"
+    ? simulator.sharedGates
+    : (selectedState?.individualGates ?? []);
+
+  const activeStepIndex = simulator.mode === "shared"
+    ? simulator.sharedStepIndex
+    : (selectedState?.individualStepIndex ?? 0);
 
   const vectors = simulator.states
     .filter((tracked) => tracked.visible)
@@ -89,9 +105,10 @@ export default function App() {
     <div style={{ width: "100%", height: "100%", position: "relative" }}>
       <Canvas camera={{ position: [3, 3, 2], fov: 45, up: [0, 0, 1] }}>
         <color attach="background" args={["#101827"]} />
-
-        <BlochSphere vectors={vectors} />
-
+        <BlochSphere
+          vectors={vectors}
+          selectedStateId={selectedState?.id}
+        />
         <OrbitControls
           target={[0, 0, 0]}
           enablePan={false}
@@ -137,14 +154,18 @@ export default function App() {
               <input
                 type="color"
                 value={selectedState.color}
-                onChange={(e) => setStateColor(selectedState.id, e.target.value)}
+                onChange={(e) =>
+                  setStateColor(selectedState.id, e.target.value)
+                }
               />
             </label>
 
             <InitialStateEditor
               key={selectedState.id}
               state={selectedState.initialState}
-              onChange={(state) => setInitialState(selectedState.id, state)}
+              onChange={(state) =>
+                setInitialState(selectedState.id, state)
+              }
             />
           </>
         )}
@@ -160,6 +181,8 @@ export default function App() {
         flexDirection: "column",
         alignItems: "center",
         gap: 12,
+        maxWidth: "calc(100vw - 48px)",
+        color: "white",
       }}>
 
         {/* Állapotvektorok */}
@@ -170,10 +193,27 @@ export default function App() {
               alignItems: "center",
               gap: 4,
             }}>
-              <span style={{ color: tracked.color }}>
+              <button
+                onClick={() => setSelectedStateId(tracked.id)}
+                style={{
+                  color: tracked.color,
+                  border: selectedState?.id === tracked.id
+                    ? `1px solid ${tracked.color}`
+                    : "1px solid transparent",
+                }}
+              >
                 {labels[tracked.id - 1]}
-              </span>
-              <button onClick={() => removeState(tracked.id)}>×</button>
+              </button>
+              <button onClick={() => {
+                removeState(tracked.id);
+
+                if (selectedState?.id === tracked.id) {
+                  const remaining = simulator.states.find(
+                    (state) => state.id !== tracked.id,
+                  );
+                  setSelectedStateId(remaining?.id ?? 1);
+                }
+              }}>×</button>
             </div>
           ))}
 
@@ -187,29 +227,57 @@ export default function App() {
           </button>
         </div>
 
+        {/* Módválasztó */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <label htmlFor="simulator-mode">Kapusor mód:</label>
+
+          <select
+            id="simulator-mode"
+            value={simulator.mode}
+            onChange={(e) =>
+              setMode(e.target.value === "individual" ? "individual" : "shared")
+            }
+          >
+            <option value="shared">Közös</option>
+            <option value="individual">Egyéni</option>
+          </select>
+
+          {simulator.mode === "individual" && selectedState && (
+            <span style={{ color: selectedState.color }}>
+              {labels[selectedState.id - 1]}
+            </span>
+          )}
+        </div>
+
         {/* Kvantumkapuk */}
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+          justifyContent: "center",
+        }}>
           {gates.map(({ label, matrix, parameter }) => (
             <button
               key={label}
-              onClick={() => addSharedGate(label, matrix, parameter)}
+              disabled={target === null}
+              onClick={() => {
+                if (target !== null) addGate(target, label, matrix, parameter);
+              }}
             >
               + {label}
             </button>
           ))}
         </div>
 
-        {/* Kapusor */}
-
+        {/* Kapusor szerkesztése */}
         <div style={{
           display: "flex",
           gap: 8,
           alignItems: "center",
           flexWrap: "wrap",
           justifyContent: "center",
-          color: "white",
         }}>
-          {simulator.sharedGates.map((gate, index) => (
+          {activeGates.map((gate, index) => (
             <div key={gate.id} style={{
               display: "flex",
               alignItems: "center",
@@ -219,9 +287,7 @@ export default function App() {
               background: "#1E293B",
             }}>
               <span style={{
-                color: index < simulator.sharedStepIndex
-                  ? "#4ADE80"
-                  : "white",
+                color: index < activeStepIndex ? "#4ADE80" : "white",
               }}>
                 {gate.label}
               </span>
@@ -231,11 +297,11 @@ export default function App() {
                   type="number"
                   step="any"
                   value={Number(
-                    (gate.parameter.angle * 180 / Math.PI).toFixed(4)
+                    (gate.parameter.angle * 180 / Math.PI).toFixed(4),
                   )}
                   onChange={(e) => {
-                    if (e.target.value.trim() === "") return;
-                    updateSharedGateAngle(gate.id, Number(e.target.value));
+                    if (target === null || e.target.value.trim() === "") return;
+                    updateGateAngle(target, gate.id, Number(e.target.value));
                   }}
                   title="Szög fokban"
                   style={{ width: 65 }}
@@ -244,54 +310,64 @@ export default function App() {
 
               <button
                 disabled={index === 0}
-                onClick={() => moveSharedGate(gate.id, -1)}
-              >
-                ←
-              </button>
+                onClick={() => {
+                  if (target !== null) moveGate(target, gate.id, -1);
+                }}
+              >←</button>
 
               <button
-                disabled={index === simulator.sharedGates.length - 1}
-                onClick={() => moveSharedGate(gate.id, 1)}
-              >
-                →
-              </button>
+                disabled={index === activeGates.length - 1}
+                onClick={() => {
+                  if (target !== null) moveGate(target, gate.id, 1);
+                }}
+              >→</button>
 
-              <button onClick={() => removeSharedGate(gate.id)}>
-                ×
-              </button>
+              <button onClick={() => {
+                if (target !== null) removeGate(target, gate.id);
+              }}>×</button>
             </div>
           ))}
 
           <button
-            disabled={simulator.sharedGates.length === 0}
-            onClick={clearSharedGates}
+            disabled={target === null || activeGates.length === 0}
+            onClick={() => {
+              if (target !== null) clearGates(target);
+            }}
           >
             Kapusor törlése
           </button>
         </div>
 
-
         {/* Léptetés */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}>
           <button
-            onClick={previousStep}
-            disabled={simulator.sharedStepIndex === 0}
-          >
-            ◀
-          </button>
+            disabled={target === null || activeStepIndex === 0}
+            onClick={() => {
+              if (target !== null) previousStep(target);
+            }}
+          >◀</button>
 
-          <span style={{ color: "white" }}>
-            {simulator.sharedStepIndex} / {simulator.sharedGates.length}
-          </span>
+          <span>{activeStepIndex} / {activeGates.length}</span>
 
           <button
-            onClick={nextStep}
-            disabled={simulator.sharedStepIndex >= simulator.sharedGates.length}
-          >
-            ▶
-          </button>
+            disabled={target === null || activeStepIndex >= activeGates.length}
+            onClick={() => {
+              if (target !== null) nextStep(target);
+            }}
+          >▶</button>
 
-          <button onClick={resetShared}>Reset</button>
+          <button
+            disabled={target === null}
+            onClick={() => {
+              if (target !== null) resetSteps(target);
+            }}
+          >
+            Reset
+          </button>
         </div>
       </div>
     </div>
