@@ -3,6 +3,8 @@ import { QubitState } from "../quantum/QubitState";
 import type { Matrix2 } from "../quantum/Matrix2";
 import { createInitialSimulatorState, MAX_STATES, DEFAULT_STATE_COLORS } from "../simulator/SimulatorState";
 import type { SimulatorState } from "../simulator/SimulatorState";
+import { P, Rx, Ry, Rz } from "../quantum/gates";
+import type { GateParameter } from "../simulator/SimulatorState";
 
 export function useSimulator() {
   const [simulator, setSimulator] = useState<SimulatorState>(createInitialSimulatorState);
@@ -60,12 +62,85 @@ export function useSimulator() {
   }
 
   // Kapu hozzáadása a közös kapusorhoz
-  function addSharedGate(label: string, matrix: Matrix2) {
+  function addSharedGate(label: string, matrix: Matrix2, parameter?: GateParameter) {
     const id = `gate-${nextGateId.current++}`;
 
     setSimulator((current) => ({
       ...current,
-      sharedGates: [...current.sharedGates, { id, label, matrix }],
+      sharedGates: [...current.sharedGates, { id, label, matrix, parameter }],
+    }));
+  }
+
+  // Kapu törlése a közös kapusorból
+  function removeSharedGate(id: string) {
+    setSimulator((current) => ({
+      ...current,
+      sharedGates: current.sharedGates.filter((gate) => gate.id !== id),
+      sharedStepIndex: 0,
+    }));
+  }
+
+  // Kapu mozgatása a közös kapusorban
+  function moveSharedGate(id: string, direction: -1 | 1) {
+    setSimulator((current) => {
+      const gates = [...current.sharedGates];
+      const index = gates.findIndex((gate) => gate.id === id);
+      const target = index + direction;
+
+      if (index === -1 || target < 0 || target >= gates.length) {
+        return current;
+      }
+
+      const [gate] = gates.splice(index, 1);
+      gates.splice(target, 0, gate);
+
+      return {
+        ...current,
+        sharedGates: gates,
+        sharedStepIndex: 0,
+      };
+    });
+  }
+
+  // Kapu paraméterének frissítése a közös kapusorban
+  function updateSharedGateAngle(id: string, degrees: number) {
+    if (!Number.isFinite(degrees)) return;
+
+    const angle = (degrees * Math.PI) / 180;
+    const factories = { P, Rx, Ry, Rz };
+
+    setSimulator((current) => ({
+      ...current,
+      sharedGates: current.sharedGates.map((gate) => {
+        if (gate.id !== id || !gate.parameter) return gate;
+
+        const kind = gate.parameter.kind;
+
+        return {
+          ...gate,
+          label: `${kind}(${degrees}°)`,
+          matrix: factories[kind](angle),
+          parameter: { kind, angle },
+        };
+      }),
+      sharedStepIndex: 0,
+    }));
+  }
+
+  // Kapuk törlése a közös kapusorból
+  function clearSharedGates() {
+    setSimulator((current) => ({
+      ...current,
+      sharedGates: [],
+      sharedStepIndex: 0,
+    }));
+  }
+
+  // Visszaállítás a kezdőállapotokra
+  function resetShared() {
+    setSimulator((current) => ({
+      ...current,
+      sharedStepIndex: 0,
     }));
   }
 
@@ -85,14 +160,6 @@ export function useSimulator() {
     }));
   }
 
-  // Visszaállítás a kezdőállapotokra
-  function resetShared() {
-    setSimulator((current) => ({
-      ...current,
-      sharedStepIndex: 0,
-    }));
-  }
-
   return {
     simulator,
     addState,
@@ -100,8 +167,12 @@ export function useSimulator() {
     setStateColor,
     removeState,
     addSharedGate,
+    removeSharedGate,
+    moveSharedGate,
+    updateSharedGateAngle,
+    clearSharedGates,
+    resetShared,
     nextStep,
     previousStep,
-    resetShared,
   };
 }

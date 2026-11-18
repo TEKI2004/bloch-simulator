@@ -7,16 +7,38 @@ import InitialStateEditor from "./components/InitialStateEditor";
 import { useSimulator } from "./hooks/useSimulator";
 import { getCurrentState, MAX_STATES } from "./simulator/SimulatorState";
 import { QubitState } from "./quantum/QubitState";
-import { X, H, S, T, Rx, Ry, Rz } from "./quantum/gates";
+import type { Matrix2 } from "./quantum/Matrix2";
+import type { GateParameter } from "./simulator/SimulatorState";
+import { X, H, S, T, P, Rx, Ry, Rz } from "./quantum/gates";
 
-const gates = [
+
+type GateOption = {
+  label: string;
+  matrix: Matrix2;
+  parameter?: GateParameter;
+};
+
+const gates: GateOption[] = [
   { label: "X", matrix: X },
   { label: "H", matrix: H },
   { label: "S", matrix: S },
   { label: "T", matrix: T },
-  { label: "Rx(π/2)", matrix: Rx(Math.PI / 2) },
-  { label: "Ry(π/2)", matrix: Ry(Math.PI / 2) },
-  { label: "Rz(π/2)", matrix: Rz(Math.PI / 2) },
+  {
+    label: "P(90°)", matrix: P(Math.PI / 2),
+    parameter: { kind: "P", angle: Math.PI / 2 }
+  },
+  {
+    label: "Rx(90°)", matrix: Rx(Math.PI / 2),
+    parameter: { kind: "Rx", angle: Math.PI / 2 }
+  },
+  {
+    label: "Ry(90°)", matrix: Ry(Math.PI / 2),
+    parameter: { kind: "Ry", angle: Math.PI / 2 }
+  },
+  {
+    label: "Rz(90°)", matrix: Rz(Math.PI / 2),
+    parameter: { kind: "Rz", angle: Math.PI / 2 }
+  },
 ];
 
 const initialStates = [
@@ -36,9 +58,13 @@ export default function App() {
     setInitialState,
     setStateColor,
     addSharedGate,
+    removeSharedGate,
+    moveSharedGate,
+    updateSharedGateAngle,
+    clearSharedGates,
+    resetShared,
     nextStep,
     previousStep,
-    resetShared,
   } = useSimulator();
 
   const [selectedStateId, setSelectedStateId] = useState(1);
@@ -163,17 +189,87 @@ export default function App() {
 
         {/* Kvantumkapuk */}
         <div style={{ display: "flex", gap: 8 }}>
-          {gates.map(({ label, matrix }) => (
-            <button key={label} onClick={() => addSharedGate(label, matrix)}>
+          {gates.map(({ label, matrix, parameter }) => (
+            <button
+              key={label}
+              onClick={() => addSharedGate(label, matrix, parameter)}
+            >
               + {label}
             </button>
           ))}
         </div>
 
         {/* Kapusor */}
-        <div style={{ color: "white" }}>
-          Kapusor: {simulator.sharedGates.map((gate) => gate.label).join(" → ") || "Üres"}
+
+        <div style={{
+          display: "flex",
+          gap: 8,
+          alignItems: "center",
+          flexWrap: "wrap",
+          justifyContent: "center",
+          color: "white",
+        }}>
+          {simulator.sharedGates.map((gate, index) => (
+            <div key={gate.id} style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: 6,
+              borderRadius: 6,
+              background: "#1E293B",
+            }}>
+              <span style={{
+                color: index < simulator.sharedStepIndex
+                  ? "#4ADE80"
+                  : "white",
+              }}>
+                {gate.label}
+              </span>
+
+              {gate.parameter && (
+                <input
+                  type="number"
+                  step="any"
+                  value={Number(
+                    (gate.parameter.angle * 180 / Math.PI).toFixed(4)
+                  )}
+                  onChange={(e) => {
+                    if (e.target.value.trim() === "") return;
+                    updateSharedGateAngle(gate.id, Number(e.target.value));
+                  }}
+                  title="Szög fokban"
+                  style={{ width: 65 }}
+                />
+              )}
+
+              <button
+                disabled={index === 0}
+                onClick={() => moveSharedGate(gate.id, -1)}
+              >
+                ←
+              </button>
+
+              <button
+                disabled={index === simulator.sharedGates.length - 1}
+                onClick={() => moveSharedGate(gate.id, 1)}
+              >
+                →
+              </button>
+
+              <button onClick={() => removeSharedGate(gate.id)}>
+                ×
+              </button>
+            </div>
+          ))}
+
+          <button
+            disabled={simulator.sharedGates.length === 0}
+            onClick={clearSharedGates}
+          >
+            Kapusor törlése
+          </button>
         </div>
+
 
         {/* Léptetés */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
