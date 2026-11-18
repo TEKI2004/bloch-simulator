@@ -1,4 +1,3 @@
-
 import { memo } from "react";
 import BlochAxes from "./BlochAxes";
 import BlochGrid from "./BlochGrid";
@@ -20,39 +19,72 @@ export type DisplayState = {
 type Props = {
   vectors: DisplayState[];
   selectedStateId?: number;
+  animationKey: string;
 };
 
-export default function BlochSphere({ vectors, selectedStateId }: Props) {
-  const grouped: {
-    ids: number[];
-    direction: BlochVector;
-    color: string;
-    labels: string[];
-  }[] = [];
+type Group = {
+  direction: BlochVector;
+  members: DisplayState[];
+};
+
+const MERGE_EPSILON = 1e-5;
+
+function isSameDirection(a: BlochVector, b: BlochVector): boolean {
+  return Math.hypot(
+    a[0] - b[0],
+    a[1] - b[1],
+    a[2] - b[2],
+  ) < MERGE_EPSILON;
+}
+
+export default function BlochSphere({
+  vectors,
+  selectedStateId,
+  animationKey,
+}: Props) {
+  const directions = new Map<number, BlochVector>();
 
   for (const vector of vectors) {
-    const direction = toBlochVector(vector.state);
+    directions.set(vector.id, toBlochVector(vector.state));
+  }
 
-    const existing = grouped.find((group) =>
-      Math.hypot(
-        ...direction.map((value, i) => value - group.direction[i]),
-      ) < 1e-5,
+  const groups: Group[] = [];
+
+  for (const vector of vectors) {
+    const direction = directions.get(vector.id)!;
+
+    const existing = groups.find((group) =>
+      isSameDirection(group.direction, direction),
     );
 
     if (existing) {
-      existing.ids.push(vector.id);
-      existing.labels.push(vector.label);
-
-      if (vector.id === selectedStateId) {
-        existing.color = vector.color;
-      }
+      existing.members.push(vector);
     } else {
-      grouped.push({
-        ids: [vector.id],
+      groups.push({
         direction,
-        color: vector.color,
-        labels: [vector.label],
+        members: [vector],
       });
+    }
+  }
+
+  const representativeById = new Map<number, number>();
+  const labelById = new Map<number, string>();
+  const hiddenById = new Map<number, boolean>();
+
+  for (const group of groups) {
+    const representative =
+      group.members.find((member) => member.id === selectedStateId)
+      ?? group.members[0];
+
+    const mergedLabel = group.members.map((member) => member.label).join(", ");
+
+    for (const member of group.members) {
+      representativeById.set(member.id, representative.id);
+      hiddenById.set(member.id, member.id !== representative.id);
+      labelById.set(
+        member.id,
+        member.id === representative.id ? mergedLabel : "",
+      );
     }
   }
 
@@ -71,12 +103,19 @@ export default function BlochSphere({ vectors, selectedStateId }: Props) {
       <MemoBlochGrid />
       <MemoBlochAxes />
 
-      {grouped.map((group) => (
+      {vectors.map((vector) => (
         <StateVector
-          key={group.ids.join("-")}
-          direction={group.direction}
-          color={group.color}
-          label={group.labels.join(", ")}
+          key={vector.id}
+          direction={directions.get(vector.id)!}
+          color={vector.color}
+          label={labelById.get(vector.id) ?? vector.label}
+          animationKey={animationKey}
+          mergedHidden={hiddenById.get(vector.id) ?? false}
+          renderOrder={
+            vector.id === selectedStateId
+              ? 30
+              : 10 + vector.id
+          }
         />
       ))}
     </group>

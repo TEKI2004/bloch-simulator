@@ -98,6 +98,12 @@ export default function App() {
       label: labels[tracked.id - 1],
     }));
 
+  const animationKey = simulator.mode === "shared"
+    ? `shared:${simulator.sharedStepIndex}`
+    : `individual:${simulator.states
+      .map((s) => `${s.id}:${s.individualStepIndex}`)
+      .join(",")}`;
+
   const nextIndex = Array.from({ length: MAX_STATES }, (_, i) => i)
     .find((i) => !simulator.states.some((state) => state.id === i + 1)) ?? -1;
 
@@ -108,6 +114,7 @@ export default function App() {
         <BlochSphere
           vectors={vectors}
           selectedStateId={selectedState?.id}
+          animationKey={animationKey}
         />
         <OrbitControls
           target={[0, 0, 0]}
