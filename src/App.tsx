@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import BlochSphere from "./components/BlochSphere/BlochSphere";
@@ -10,6 +10,7 @@ import { QubitState } from "./quantum/QubitState";
 import type { Matrix2 } from "./quantum/Matrix2";
 import type { GateParameter } from "./simulator/SimulatorState";
 import { X, H, S, T, P, Rx, Ry, Rz } from "./quantum/gates";
+import { getHistorySegments } from "./simulator/history";
 
 type GateOption = {
   label: string;
@@ -71,6 +72,8 @@ export default function App() {
     resetSteps,
   } = useSimulator();
 
+  const [isPlaying, setIsPlaying] = useState(false);
+
   const [selectedStateId, setSelectedStateId] = useState(1);
 
   const selectedState =
@@ -89,6 +92,21 @@ export default function App() {
     ? simulator.sharedStepIndex
     : (selectedState?.individualStepIndex ?? 0);
 
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    if (target === null || activeStepIndex >= activeGates.length) {
+      setIsPlaying(false);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      nextStep(target);
+    }, 650);
+
+    return () => window.clearTimeout(timeout);
+  }, [isPlaying, target, activeStepIndex, activeGates.length, nextStep]);
+
   const vectors = simulator.states
     .filter((tracked) => tracked.visible)
     .map((tracked) => ({
@@ -96,9 +114,17 @@ export default function App() {
       state: getCurrentState(tracked, simulator),
       color: tracked.color,
       label: labels[tracked.id - 1],
+      gates: simulator.mode === "shared"
+        ? simulator.sharedGates
+        : tracked.individualGates,
+      stepIndex: simulator.mode === "shared"
+        ? simulator.sharedStepIndex
+        : tracked.individualStepIndex,
+      mode: simulator.mode,
+      history: getHistorySegments(tracked, simulator),
     }));
 
-  const animationKey = simulator.mode === "shared"
+  const mergeAnimationKey = simulator.mode === "shared"
     ? `shared:${simulator.sharedStepIndex}`
     : `individual:${simulator.states
       .map((s) => `${s.id}:${s.individualStepIndex}`)
@@ -114,7 +140,7 @@ export default function App() {
         <BlochSphere
           vectors={vectors}
           selectedStateId={selectedState?.id}
-          animationKey={animationKey}
+          mergeAnimationKey={mergeAnimationKey}
         />
         <OrbitControls
           target={[0, 0, 0]}
@@ -142,7 +168,10 @@ export default function App() {
           <>
             <select
               value={selectedState.id}
-              onChange={(e) => setSelectedStateId(Number(e.target.value))}
+              onChange={(e) => {
+                setIsPlaying(false);
+                setSelectedStateId(Number(e.target.value));
+              }}
             >
               {simulator.states.map((tracked) => (
                 <option key={tracked.id} value={tracked.id}>
@@ -201,7 +230,10 @@ export default function App() {
               gap: 4,
             }}>
               <button
-                onClick={() => setSelectedStateId(tracked.id)}
+                onClick={() => {
+                  setIsPlaying(false);
+                  setSelectedStateId(tracked.id);
+                }}
                 style={{
                   color: tracked.color,
                   border: selectedState?.id === tracked.id
@@ -241,9 +273,10 @@ export default function App() {
           <select
             id="simulator-mode"
             value={simulator.mode}
-            onChange={(e) =>
-              setMode(e.target.value === "individual" ? "individual" : "shared")
-            }
+            onChange={(e) => {
+              setIsPlaying(false);
+              setMode(e.target.value === "individual" ? "individual" : "shared");
+            }}
           >
             <option value="shared">Közös</option>
             <option value="individual">Egyéni</option>
@@ -308,6 +341,7 @@ export default function App() {
                   )}
                   onChange={(e) => {
                     if (target === null || e.target.value.trim() === "") return;
+                    setIsPlaying(false);
                     updateGateAngle(target, gate.id, Number(e.target.value));
                   }}
                   title="Szög fokban"
@@ -318,19 +352,28 @@ export default function App() {
               <button
                 disabled={index === 0}
                 onClick={() => {
-                  if (target !== null) moveGate(target, gate.id, -1);
+                  if (target !== null) {
+                    setIsPlaying(false);
+                    moveGate(target, gate.id, -1);
+                  }
                 }}
               >←</button>
 
               <button
                 disabled={index === activeGates.length - 1}
                 onClick={() => {
-                  if (target !== null) moveGate(target, gate.id, 1);
+                  if (target !== null) {
+                    setIsPlaying(false);
+                    moveGate(target, gate.id, 1);
+                  }
                 }}
               >→</button>
 
               <button onClick={() => {
-                if (target !== null) removeGate(target, gate.id);
+                if (target !== null) {
+                  setIsPlaying(false);
+                  removeGate(target, gate.id);
+                }
               }}>×</button>
             </div>
           ))}
@@ -352,7 +395,7 @@ export default function App() {
           gap: 12,
         }}>
           <button
-            disabled={target === null || activeStepIndex === 0}
+            disabled={isPlaying || target === null || activeStepIndex === 0}
             onClick={() => {
               if (target !== null) previousStep(target);
             }}
@@ -361,15 +404,33 @@ export default function App() {
           <span>{activeStepIndex} / {activeGates.length}</span>
 
           <button
-            disabled={target === null || activeStepIndex >= activeGates.length}
+            disabled={isPlaying || target === null || activeStepIndex >= activeGates.length}
             onClick={() => {
               if (target !== null) nextStep(target);
             }}
           >▶</button>
 
           <button
+            disabled={
+              !isPlaying &&
+              (target === null || activeStepIndex >= activeGates.length)
+            }
+            onClick={() => {
+              if (isPlaying) {
+                setIsPlaying(false);
+              } else if (target !== null) {
+                nextStep(target);
+                setIsPlaying(true);
+              }
+            }}
+          >
+            {isPlaying ? "⏸ Pause" : "▶ Play"}
+          </button>
+
+          <button
             disabled={target === null}
             onClick={() => {
+              setIsPlaying(false);
               if (target !== null) resetSteps(target);
             }}
           >

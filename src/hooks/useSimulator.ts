@@ -116,27 +116,63 @@ export function useSimulator() {
   }
 
   function removeGate(target: GateTarget, id: string) {
-    setSimulator((current) =>
-      editGates(current, target, (gates) => (gates.some((gate) => gate.id === id) ? gates.filter((gate) => gate.id !== id) : gates)),
-    );
+    setSimulator((current) => {
+      if (target === "shared") {
+        const index = current.sharedGates.findIndex((gate) => gate.id === id);
+
+        if (index === -1) return current;
+
+        return {
+          ...current,
+          sharedGates: current.sharedGates.filter((gate) => gate.id !== id),
+          sharedStepIndex: current.sharedStepIndex - (index < current.sharedStepIndex ? 1 : 0),
+        };
+      }
+
+      const tracked = current.states.find((state) => state.id === target);
+
+      if (!tracked) return current;
+
+      const index = tracked.individualGates.findIndex((gate) => gate.id === id);
+
+      if (index === -1) return current;
+
+      return {
+        ...current,
+        states: current.states.map((state) =>
+          state.id === target
+            ? {
+                ...state,
+                individualGates: state.individualGates.filter((gate) => gate.id !== id),
+                individualStepIndex: state.individualStepIndex - (index < state.individualStepIndex ? 1 : 0),
+              }
+            : state,
+        ),
+      };
+    });
   }
 
   function moveGate(target: GateTarget, id: string, direction: -1 | 1) {
     setSimulator((current) =>
-      editGates(current, target, (gates) => {
-        const index = gates.findIndex((gate) => gate.id === id);
-        const destination = index + direction;
+      editGates(
+        current,
+        target,
+        (gates) => {
+          const index = gates.findIndex((gate) => gate.id === id);
+          const destination = index + direction;
 
-        if (index === -1 || destination < 0 || destination >= gates.length) {
-          return gates;
-        }
+          if (index === -1 || destination < 0 || destination >= gates.length) {
+            return gates;
+          }
 
-        const result = [...gates];
-        const [gate] = result.splice(index, 1);
-        result.splice(destination, 0, gate);
+          const result = [...gates];
+          const [gate] = result.splice(index, 1);
+          result.splice(destination, 0, gate);
 
-        return result;
-      }),
+          return result;
+        },
+        false,
+      ),
     );
   }
 
@@ -146,24 +182,29 @@ export function useSimulator() {
     const angle = (degrees * Math.PI) / 180;
 
     setSimulator((current) =>
-      editGates(current, target, (gates) => {
-        if (!gates.some((gate) => gate.id === id && gate.parameter)) {
-          return gates;
-        }
+      editGates(
+        current,
+        target,
+        (gates) => {
+          if (!gates.some((gate) => gate.id === id && gate.parameter)) {
+            return gates;
+          }
 
-        return gates.map((gate) => {
-          if (gate.id !== id || !gate.parameter) return gate;
+          return gates.map((gate) => {
+            if (gate.id !== id || !gate.parameter) return gate;
 
-          const kind = gate.parameter.kind;
+            const kind = gate.parameter.kind;
 
-          return {
-            ...gate,
-            label: `${kind}(${degrees}°)`,
-            matrix: gateFactories[kind](angle),
-            parameter: { kind, angle },
-          };
-        });
-      }),
+            return {
+              ...gate,
+              label: `${kind}(${degrees}°)`,
+              matrix: gateFactories[kind](angle),
+              parameter: { kind, angle },
+            };
+          });
+        },
+        false,
+      ),
     );
   }
 

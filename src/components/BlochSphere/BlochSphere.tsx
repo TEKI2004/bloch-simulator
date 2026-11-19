@@ -1,10 +1,13 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import BlochAxes from "./BlochAxes";
 import BlochGrid from "./BlochGrid";
 import StateVector from "./StateVector";
 import { toBlochVector } from "../../quantum/bloch";
 import type { BlochVector } from "../../quantum/bloch";
 import type { QubitState } from "../../quantum/QubitState";
+import type { GateStep, SimulatorMode, } from "../../simulator/SimulatorState";
+import HistoryCurve from "./HistoryCurve";
+import type { HistorySegment } from "../../simulator/history";
 
 const MemoBlochAxes = memo(BlochAxes);
 const MemoBlochGrid = memo(BlochGrid);
@@ -14,12 +17,16 @@ export type DisplayState = {
   state: QubitState;
   color: string;
   label: string;
+  gates: GateStep[];
+  stepIndex: number;
+  mode: SimulatorMode;
+  history: HistorySegment[];
 };
 
 type Props = {
   vectors: DisplayState[];
   selectedStateId?: number;
-  animationKey: string;
+  mergeAnimationKey: string;
 };
 
 type Group = {
@@ -40,8 +47,25 @@ function isSameDirection(a: BlochVector, b: BlochVector): boolean {
 export default function BlochSphere({
   vectors,
   selectedStateId,
-  animationKey,
+  mergeAnimationKey,
 }: Props) {
+
+  const progressRefs = useMemo(
+    () => new Map<number, { current: number }>(),
+    [],
+  );
+
+  function getProgressRef(id: number) {
+    let progress = progressRefs.get(id);
+
+    if (!progress) {
+      progress = { current: 1 };
+      progressRefs.set(id, progress);
+    }
+
+    return progress;
+  }
+
   const directions = new Map<number, BlochVector>();
 
   for (const vector of vectors) {
@@ -88,6 +112,24 @@ export default function BlochSphere({
     }
   }
 
+  const gateSignature = vectors
+    .map((vector) =>
+      `${vector.id}:${vector.gates
+        .map((gate) => `${gate.id}:${gate.label}`)
+        .join("|")}`
+    )
+    .join(";");
+
+  const stayMergedIds = new Set(
+    groups
+      .filter(
+        (group) =>
+          group.members.length > 1 &&
+          group.members.every((member) => member.mode === "shared"),
+      )
+      .flatMap((group) => group.members.map((member) => member.id)),
+  );
+
   return (
     <group>
       <mesh>
@@ -104,18 +146,32 @@ export default function BlochSphere({
       <MemoBlochAxes />
 
       {vectors.map((vector) => (
-        <StateVector
+        <HistoryCurve
           key={vector.id}
+          segments={vector.history}
+          color={vector.color}
+          stepIndex={vector.stepIndex}
+          mode={vector.mode}
+          progressRef={getProgressRef(vector.id)}
+          gates={vector.gates}
+        />
+      ))}
+
+      {vectors.map((vector) => (
+        <StateVector
+          key={`${vector.id}-${gateSignature}`}
           direction={directions.get(vector.id)!}
           color={vector.color}
           label={labelById.get(vector.id) ?? vector.label}
-          animationKey={animationKey}
+          gates={vector.gates}
+          stepIndex={vector.stepIndex}
+          mode={vector.mode}
           mergedHidden={hiddenById.get(vector.id) ?? false}
-          renderOrder={
-            vector.id === selectedStateId
-              ? 30
-              : 10 + vector.id
-          }
+          renderOrder={vector.id === selectedStateId ? 30 : 10 + vector.id}
+          mergeAnimationKey={mergeAnimationKey}
+          progressRef={getProgressRef(vector.id)}
+          ownLabel={vector.label}
+          keepMergedDuringAnimation={stayMergedIds.has(vector.id)}
         />
       ))}
     </group>
