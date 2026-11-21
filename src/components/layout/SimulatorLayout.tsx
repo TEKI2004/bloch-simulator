@@ -55,28 +55,42 @@ export default function SimulatorLayout({
         }
     }
 
+
     return (
         <div
             className="sim-layout"
             style={{
-                gridTemplateRows: `${HEADER_HEIGHT}px minmax(0, 1fr) ${bottomHeight}px`,
+                gridTemplateRows:
+                    `${HEADER_HEIGHT}px minmax(0, 1fr) ${bottomHeight}px`,
             }}
         >
             <header className="sim-header">
                 <div className="sim-brand">
-                    <span className="sim-brand-icon">◈</span>
+                    <img
+                        src={`${import.meta.env.BASE_URL}favicon.ico`}
+                        alt=""
+                        className="sim-brand-logo"
+                    />
                     <span>Bloch Sphere Simulator</span>
                 </div>
             </header>
 
             <main className="sim-workspace">
-                <section className="sim-sidebar">{left}</section>
+                <section className="sim-sidebar">
+                    {left}
+                </section>
 
-                <section className="sim-viewport">{center}</section>
-
-                <section className="sim-sidebar">{right}</section>
+                <section className="sim-viewport">
+                    {center}
+                </section>
             </main>
 
+            {/* Jobb panel: felső munkaterület + alsó QC magassága */}
+            <section className="sim-right-sidebar">
+                {right}
+            </section>
+
+            {/* QC: csak a bal oldali és középső oszlop alatt */}
             <section className="sim-bottom">
                 <div
                     className="sim-resize-handle"

@@ -2,6 +2,9 @@
   width: 100%;
   height: 100vh;
   height: 100dvh;
+  grid-template-columns:
+    minmax(0, 1fr)
+    clamp(300px, 24vw, 390px);
 
   display: grid;
   min-height: 0;
@@ -17,6 +20,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  grid-column: 1 / -1;
+  grid-row: 1;
 
   padding: 0 24px;
   border-bottom: 1px solid #334155;
@@ -41,15 +46,16 @@
 /* Fő munkaterület */
 
 .sim-workspace {
-  display: grid;
+  grid-column: 1;
+  grid-row: 2;
 
+  display: grid;
   grid-template-columns:
     clamp(370px, 29vw, 460px)
-    minmax(0, 1fr)
-    clamp(250px, 21vw, 320px);
+    minmax(0, 1fr);
 
   gap: 12px;
-  padding: 12px;
+  padding: 12px 0 12px 12px;
 
   min-width: 0;
   min-height: 0;
@@ -57,9 +63,18 @@
 }
 
 .sim-sidebar {
+  display: flex;
+  flex-direction: column;
+
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+}
+
+.sim-sidebar > .sim-side-panel {
+  flex: 1;
+  min-height: 0;
+  box-sizing: border-box;
 }
 
 .sim-side-panel {
@@ -94,6 +109,11 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  grid-column: 1;
+  grid-row: 3;
+  border-radius: 0 12px 0 0;
+  overflow: hidden;
+  container: sim-bottom / inline-size;
 
   border-top: 1px solid #334155;
   background: #172235;
@@ -129,24 +149,11 @@
   flex-direction: column;
   gap: 12px;
 
-  min-height: 0;
   flex: 1;
+  min-height: 0;
 
   padding: 8px 20px 18px;
-  overflow-y: auto;
-}
-
-.sim-bottom-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.sim-gate-palette {
-  display: flex;
-  justify-content: flex-start;
+  overflow: hidden;
 }
 
 .sim-circuit {
@@ -214,35 +221,17 @@
 }
 
 @media (max-width: 1050px) {
+  .sim-layout {
+    grid-template-columns: minmax(0, 1fr) 280px;
+  }
+
   .sim-workspace {
-    grid-template-columns: 300px minmax(0, 1fr) 230px;
+    grid-template-columns: 300px minmax(0, 1fr);
   }
 
   .sim-side-panel {
     padding: 14px;
   }
-}
-
-.sim-layout .sim-gate-palette button {
-  min-width: 38px;
-  height: 34px;
-  padding: 0 12px;
-
-  background: #293548;
-  border-color: #475569;
-
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.sim-layout .sim-gate-palette button:hover:not(:disabled) {
-  background: #35475f;
-  border-color: #22d3ee;
-}
-
-.sim-layout .sim-gate-palette button:active {
-  cursor: grabbing;
 }
 
 .sim-side-panel.initial-state-panel {
@@ -251,6 +240,78 @@
 
 .initial-state-panel > h3 {
   margin: 0 0 18px;
-  font-size: 16px;
+  font-size: 19px;
   font-weight: 600;
+}
+
+.sim-right-sidebar {
+  grid-column: 2;
+  grid-row: 2 / 4;
+
+  display: flex;
+  flex-direction: column;
+
+  min-width: 0;
+  min-height: 0;
+
+  padding: 12px;
+  overflow: hidden;
+}
+
+.sim-right-sidebar > .sim-side-panel {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* Oldalsó panelek: görgetés látható scrollbar nélkül */
+
+.sim-sidebar,
+.sim-right-sidebar,
+.sim-side-panel {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Régebbi Edge */
+}
+
+.sim-sidebar::-webkit-scrollbar,
+.sim-right-sidebar::-webkit-scrollbar,
+.sim-side-panel::-webkit-scrollbar {
+  display: none; /* Chrome, Edge, Safari */
+}
+
+/* Alsó QC-panel: görgetés látható scrollbar nélkül */
+
+.sim-bottom,
+.sim-bottom-content,
+.qc-rows,
+.qc-row-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sim-bottom::-webkit-scrollbar,
+.sim-bottom-content::-webkit-scrollbar,
+.qc-rows::-webkit-scrollbar,
+.qc-row-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.sim-bottom-header,
+.sim-gate-palette {
+  flex-shrink: 0;
+}
+
+.sim-brand-title {
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.sim-brand-logo {
+  display: block;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  object-fit: contain;
 }

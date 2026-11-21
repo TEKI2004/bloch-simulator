@@ -1,0 +1,69 @@
+.qc-playback-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 7px;
+
+  white-space: nowrap;
+}
+
+.sim-layout .qc-playback-button {
+  display: grid;
+  place-items: center;
+  flex: 0 0 38px;
+
+  width: 38px;
+  height: 38px;
+  padding: 0;
+
+  border: 1px solid #405066;
+  border-radius: 8px;
+  background: #293548;
+
+  color: #e2e8f0;
+}
+
+.qc-playback-button svg {
+  display: block;
+  width: 17px;
+  height: 17px;
+
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sim-layout .qc-playback-button:hover:not(:disabled) {
+  border-color: #22d3ee;
+  background: #34465e;
+}
+
+.qc-playback-step {
+  flex: 0 0 auto;
+  min-width: 48px;
+
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+@container sim-bottom (max-width: 800px) {
+  .qc-playback-controls {
+    gap: 5px;
+  }
+
+  .sim-layout .qc-playback-button {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+  }
+
+  .qc-playback-step {
+    min-width: 42px;
+    font-size: 12px;
+  }
+}

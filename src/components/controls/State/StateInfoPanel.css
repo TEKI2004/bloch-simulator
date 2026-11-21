@@ -1,0 +1,369 @@
+/* Teljes jobb oldali panel */
+
+.state-info-panel {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  gap: 22px;
+
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  color: #e2e8f0;
+}
+
+.state-info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.state-info-header h3 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+}
+.state-info-selected {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
+  color: var(--state-color);
+  font-family: "Cambria Math", serif;
+  font-size: 19px;
+  white-space: nowrap;
+}
+
+.state-info-selected-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+
+  background: var(--state-color);
+  border-radius: 50%;
+}
+
+/* Lépésszám */
+
+.state-info-step {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+
+  color: #94a3b8;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.state-info-step span:last-child {
+  color: #64748b;
+  white-space: nowrap;
+}
+
+/* Állapotegyenlet */
+
+.state-info-vector-card {
+  min-width: 0;
+  padding: 17px 13px;
+
+  background: #172235;
+  border: 1px solid #334155;
+  border-radius: 10px;
+}
+
+.state-info-card-caption {
+  margin-bottom: 15px;
+
+  color: #94a3b8;
+  font-size: 11px;
+  text-align: center;
+}
+
+.state-info-equation {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+
+  min-width: 0;
+  font-family: "Cambria Math", serif;
+  font-size: 17px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.state-info-equation-label {
+  color: #e2e8f0;
+  white-space: nowrap;
+}
+
+.state-info-equation-terms {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  column-gap: 6px;
+  row-gap: 3px;
+
+  max-width: 100%;
+  min-width: 0;
+}
+
+.state-info-term {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.state-info-operator {
+  color: #94a3b8;
+}
+
+/* Szekciók */
+
+.state-info-section {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.state-info-section h4 {
+  margin: 0;
+
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Mérési valószínűségek */
+
+.state-info-probabilities {
+  display: grid;
+  gap: 17px;
+}
+
+.state-info-probability {
+  display: grid;
+  gap: 9px;
+}
+
+.state-info-probability-header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.state-info-basis {
+  color: #e2e8f0;
+  font-family: "Cambria Math", serif;
+  font-size: 16px;
+}
+
+.state-info-formula {
+  color: #64748b;
+  font-family: "Cambria Math", serif;
+  font-size: 13px;
+}
+
+.state-info-probability-value {
+  margin-left: auto;
+
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.state-info-probability-track {
+  height: 7px;
+  overflow: hidden;
+
+  background: #334155;
+  border-radius: 999px;
+}
+
+.state-info-probability-fill {
+  height: 100%;
+  background: var(--state-color);
+  border-radius: inherit;
+}
+
+.state-info-note {
+  margin: -5px 0 0;
+
+  color: #64748b;
+  font-size: 11px;
+}
+
+/* Bloch-koordináták */
+
+.state-info-coordinates {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.state-info-coordinate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  min-width: 0;
+  min-height: 75px;
+  padding: 10px 4px;
+
+  background: #172235;
+  border: 1px solid #334155;
+  border-radius: 9px;
+}
+
+.state-info-coordinate-label {
+  color: #94a3b8;
+  font-family: "Cambria Math", serif;
+  font-size: 15px;
+}
+
+.state-info-coordinate-value {
+  max-width: 100%;
+
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+
+  overflow-wrap: anywhere;
+}
+
+/* Relatív fázis */
+
+.state-info-relative-phase {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  padding-top: 15px;
+  border-top: 1px solid #334155;
+
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.state-info-relative-phase-value {
+  color: #cbd5e1;
+  font-family: "Cambria Math", serif;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Aktuális kapu */
+
+.state-info-gate-section {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.state-info-gate-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.state-info-gate-header h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.state-info-gate-name {
+  color: var(--state-color);
+  font-family: "Cambria Math", serif;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Mátrixkártya */
+
+.state-info-gate-card {
+  min-width: 0;
+  padding: 14px 10px;
+
+  background: #172235;
+  border: 1px solid #334155;
+  border-radius: 10px;
+}
+
+.state-info-gate-matrix-scroll {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.state-info-matrix {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 8px;
+
+  width: max-content;
+  min-width: 100%;
+}
+
+.state-info-matrix-values {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  column-gap: 20px;
+  row-gap: 13px;
+
+  padding: 8px 4px;
+}
+
+.state-info-matrix-value {
+  color: #e2e8f0;
+  font-family: "Cambria Math", serif;
+  font-size: 15px;
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Mátrix zárójelei */
+
+.state-info-matrix-bracket {
+  position: relative;
+  width: 8px;
+  flex-shrink: 0;
+
+  border-top: 2px solid #94a3b8;
+  border-bottom: 2px solid #94a3b8;
+}
+
+.state-info-matrix-bracket:first-child {
+  border-left: 2px solid #94a3b8;
+}
+
+.state-info-matrix-bracket:last-child {
+  border-right: 2px solid #94a3b8;
+}
+
+/* Nulla végrehajtott lépés */
+
+.state-info-gate-empty {
+  margin: 0;
+  padding: 8px 0;
+
+  color: #64748b;
+  font-size: 12px;
+}

@@ -16,6 +16,7 @@ import BlochViewport from "./components/viewport/BlochViewport";
 
 import StateTabs from "./components/controls/State/StateTabs";
 import StateColorPicker from "./components/controls/State/StateColorPicker";
+import CircuitToolbar from "./components/controls/Circuit/CircuitToolbar";
 
 
 import { useSimulator } from "./hooks/useSimulator";
@@ -70,6 +71,11 @@ export default function App() {
   const activeStepIndex = simulator.mode === "shared"
     ? simulator.sharedStepIndex
     : (selectedState?.individualStepIndex ?? 0);
+
+  const activeGate =
+    activeStepIndex > 0
+      ? activeGates[activeStepIndex - 1]
+      : undefined;
 
   // Automatikus lejátszás
   const {
@@ -228,6 +234,9 @@ export default function App() {
             state={selectedCurrentState}
             label={STATE_LABELS[selectedState.id - 1]}
             color={selectedState.color}
+            stepIndex={activeStepIndex}
+            totalSteps={activeGates.length}
+            activeGate={activeGate}
           />
         ) : null
       }
@@ -235,52 +244,61 @@ export default function App() {
       bottom={
         <>
           {/* Módválasztó és lejátszás */}
-          <div className="sim-bottom-header">
-            <ModeSelector
-              mode={simulator.mode}
-              selectedState={selectedState}
-              onChange={(mode) => {
-                stopPlayback();
-                setMode(mode);
-              }}
-            />
+          <CircuitToolbar
+            palette={
+              <GatePalette
+                disabled={target === null}
+                onAdd={(gate) => {
+                  if (target === null) return;
 
-            <PlaybackControls
-              stepIndex={activeStepIndex}
-              totalSteps={activeGates.length}
-              isPlaying={isPlaying}
-              disabled={target === null}
-              onPrevious={() => {
-                if (target !== null) previousStep(target);
-              }}
-              onNext={() => {
-                if (target !== null) nextStep(target);
-              }}
-              onPlayPause={togglePlayback}
-              onReset={() => {
-                stopPlayback();
-                if (target !== null) resetSteps(target);
-              }}
-            />
-          </div>
+                  stopPlayback();
 
-          {/* Kapupaletta */}
-          <div className="sim-gate-palette">
-            <GatePalette
-              disabled={target === null}
-              onAdd={(gate) => {
-                if (target === null) return;
+                  addGate(
+                    target,
+                    gate.label,
+                    gate.matrix,
+                    gate.parameter,
+                  );
+                }}
+              />
+            }
+            playback={
+              <PlaybackControls
+                stepIndex={activeStepIndex}
+                totalSteps={activeGates.length}
+                isPlaying={isPlaying}
+                disabled={target === null}
+                onPrevious={() => {
+                  if (target !== null) {
+                    previousStep(target);
+                  }
+                }}
+                onNext={() => {
+                  if (target !== null) {
+                    nextStep(target);
+                  }
+                }}
+                onPlayPause={togglePlayback}
+                onReset={() => {
+                  stopPlayback();
 
-                stopPlayback();
-                addGate(
-                  target,
-                  gate.label,
-                  gate.matrix,
-                  gate.parameter,
-                );
-              }}
-            />
-          </div>
+                  if (target !== null) {
+                    resetSteps(target);
+                  }
+                }}
+              />
+            }
+            mode={
+              <ModeSelector
+                mode={simulator.mode}
+                onChange={(mode) => {
+                  stopPlayback();
+                  setMode(mode);
+                }}
+              />
+            }
+          />
+
 
           {/* Composer-szerű kapusorok */}
           <CircuitRows

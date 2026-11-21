@@ -1,6 +1,7 @@
 import type { Matrix2 } from "../quantum/Matrix2";
 import type { GateParameter } from "./SimulatorState";
-import { X, H, S, T, P, Rx, Ry, Rz } from "../quantum/gates";
+
+import { X, Y, Z, H, S, Sdg, T, Tdg, P, Rx, Ry, Rz } from "../quantum/gates";
 
 export type GateOption = {
   label: string;
@@ -10,9 +11,15 @@ export type GateOption = {
 
 export const GATE_OPTIONS: GateOption[] = [
   { label: "X", matrix: X },
+  { label: "Y", matrix: Y },
+  { label: "Z", matrix: Z },
   { label: "H", matrix: H },
+
   { label: "S", matrix: S },
+  { label: "S†", matrix: Sdg },
   { label: "T", matrix: T },
+  { label: "T†", matrix: Tdg },
+
   {
     label: "P(90°)",
     matrix: P(Math.PI / 2),

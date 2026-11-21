@@ -43,6 +43,20 @@ function getMarkerPosition(
     const trackRect = track.getBoundingClientRect();
     const viewportRect = scrollContainer.getBoundingClientRect();
 
+    const rowsContainer = scrollContainer.closest<HTMLElement>(
+        ".qc-rows",
+    );
+
+    const rowsRect = rowsContainer?.getBoundingClientRect();
+
+    const clipTop = rowsRect
+        ? Math.max(0, rowsRect.top - viewportRect.top)
+        : 0;
+
+    const clipBottom = rowsRect
+        ? Math.max(0, viewportRect.bottom - rowsRect.bottom)
+        : 0;
+
     const gates = Array.from(
         track.querySelectorAll<HTMLElement>(".qc-gate"),
     );
@@ -89,6 +103,8 @@ function getMarkerPosition(
         viewport: viewportRect,
         left: left - viewportRect.left,
         top: trackRect.top + 2 - viewportRect.top,
+        clipTop,
+        clipBottom,
     };
 }
 
@@ -123,6 +139,8 @@ export default function StepMarker({
         overlay.style.top = `${viewport.top}px`;
         overlay.style.width = `${viewport.width}px`;
         overlay.style.height = `${viewport.height}px`;
+        overlay.style.clipPath =
+            `inset(${position.clipTop}px 0px ${position.clipBottom}px 0px)`;
 
         marker.style.transition = duration > 0
             ? `left ${duration}ms ${duration === DRAG_DURATION ? "ease" : "ease-in-out"
@@ -236,6 +254,8 @@ export default function StepMarker({
             overlay.style.top = `${viewport.top}px`;
             overlay.style.width = `${viewport.width}px`;
             overlay.style.height = `${viewport.height}px`;
+            overlay.style.clipPath =
+                `inset(${position.clipTop}px 0px ${position.clipBottom}px 0px)`;
 
             marker.style.top = `${position.top}px`;
         }

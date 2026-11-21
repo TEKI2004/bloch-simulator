@@ -1,0 +1,48 @@
+.qc-gate-palette {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+
+  width: 100%;
+  min-width: 0;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior-x: contain;
+}
+
+.qc-gate-palette::-webkit-scrollbar {
+  display: none;
+}
+
+.sim-layout .qc-gate-palette-button {
+  flex: 0 0 auto;
+
+  height: 40px;
+  min-width: 44px;
+  padding: 0 14px;
+
+  border: 1px solid #475569;
+  border-radius: 8px;
+  background: #293548;
+
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+
+  cursor: grab;
+}
+
+.sim-layout .qc-gate-palette-button:hover:not(:disabled) {
+  background: #35475f;
+  border-color: #22d3ee;
+}
+
+.sim-layout .qc-gate-palette-button:active {
+  cursor: grabbing;
+}

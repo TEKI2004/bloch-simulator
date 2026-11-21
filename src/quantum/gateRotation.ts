@@ -35,14 +35,21 @@ export function getGateRotation(gate: GateStep): GateRotation | null {
         axis: [Math.SQRT1_2, 0, Math.SQRT1_2],
         angle: Math.PI,
       };
+
     case "S":
       return { axis: [0, 0, 1], angle: Math.PI / 2 };
+
+    case "S†":
     case "Sdg":
       return { axis: [0, 0, 1], angle: -Math.PI / 2 };
+
     case "T":
       return { axis: [0, 0, 1], angle: Math.PI / 4 };
+
+    case "T†":
     case "Tdg":
       return { axis: [0, 0, 1], angle: -Math.PI / 4 };
+
     default:
       throw new Error(`Unknown gate rotation: ${gate.label}`);
   }

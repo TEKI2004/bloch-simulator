@@ -1,0 +1,49 @@
+.qc-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 12px;
+
+  width: 100%;
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
+/* Bal oldal: rugalmas, görgethető kapupaletta */
+
+.qc-toolbar-palette {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Jobb oldal: mindig látható vezérlők */
+
+.qc-toolbar-playback,
+.qc-toolbar-mode {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-width: 0;
+
+  padding-left: 12px;
+  border-left: 1px solid #334155;
+}
+
+/* Keskeny alsó panel esetén kisebb térközök */
+
+@container sim-bottom (max-width: 800px) {
+  .qc-toolbar {
+    gap: 7px;
+  }
+
+  .qc-toolbar-playback,
+  .qc-toolbar-mode {
+    padding-left: 7px;
+  }
+
+  .qc-toolbar-mode .qc-mode-selector {
+    gap: 6px;
+    font-size: 12px;
+  }
+}
