@@ -1,7 +1,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { GateStep } from "../../simulator/SimulatorState";
+import type { GateStep } from "../../../simulator/SimulatorState";
 import "./GatePopover.css";
 
 type Props = {
@@ -141,6 +141,8 @@ export default function GatePopover({
 
         const scrollContainer = anchor.closest(".qc-row-scroll");
         if (scrollContainer) observer.observe(scrollContainer);
+        const bottomPanel = anchor.closest(".sim-bottom");
+        if (bottomPanel) observer.observe(bottomPanel);
 
         return () => {
             window.removeEventListener("scroll", updatePosition, true);

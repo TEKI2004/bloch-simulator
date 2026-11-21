@@ -1,8 +1,8 @@
 
 import type { CSSProperties } from "react";
-import type { QubitState } from "../../quantum/QubitState";
-import { toBlochVector } from "../../quantum/bloch";
-import { formatComplex, formatNumber } from "../../quantum/format";
+import type { QubitState } from "../../../quantum/QubitState";
+import { toBlochVector } from "../../../quantum/bloch";
+import { formatComplex, formatNumber } from "../../../quantum/format";
 
 type Props = {
     state: QubitState;

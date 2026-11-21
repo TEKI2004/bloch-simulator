@@ -3,7 +3,7 @@ import { QubitState } from "../quantum/QubitState";
 import type { Matrix2 } from "../quantum/Matrix2";
 import { P, Rx, Ry, Rz } from "../quantum/gates";
 import { createInitialSimulatorState, DEFAULT_STATE_COLORS, MAX_STATES } from "../simulator/SimulatorState";
-import type { GateParameter, GateStep, SimulatorMode, SimulatorState } from "../simulator/SimulatorState";
+import type { GateParameter, GateStep, SimulatorMode, SimulatorState, VisualTransitionKind } from "../simulator/SimulatorState";
 
 type GateTarget = "shared" | number;
 
@@ -14,11 +14,15 @@ type GateSequence = {
 
 const gateFactories: Record<GateParameter["kind"], (angle: number) => Matrix2> = { P, Rx, Ry, Rz };
 
+function nextVisualTransition(current: SimulatorState, kind: VisualTransitionKind) {
+  return { revision: current.visualTransition.revision + 1, kind };
+}
+
 function updateGateSequence(
   current: SimulatorState,
   target: GateTarget,
   update: (sequence: GateSequence) => GateSequence,
-  kind: "edit" | "move" = "edit",
+  kind: "edit" | "step" | "jump" = "edit",
 ): SimulatorState {
   if (target === "shared") {
     const previous: GateSequence = {
@@ -38,7 +42,7 @@ function updateGateSequence(
       sharedGates: next.gates,
       sharedStepIndex: next.stepIndex,
       gateEditRevision: current.gateEditRevision + (gatesChanged ? 1 : 0),
-      gateMoveRevision: current.gateMoveRevision + (gatesChanged && kind === "move" ? 1 : 0),
+      visualTransition: nextVisualTransition(current, gatesChanged ? "edit" : kind),
     };
   }
 
@@ -60,7 +64,7 @@ function updateGateSequence(
   return {
     ...current,
     gateEditRevision: current.gateEditRevision + (gatesChanged ? 1 : 0),
-    gateMoveRevision: current.gateMoveRevision + (gatesChanged && kind === "move" ? 1 : 0),
+    visualTransition: nextVisualTransition(current, gatesChanged ? "edit" : kind),
     states: current.states.map((state) =>
       state.id === target
         ? {
@@ -79,7 +83,15 @@ export function useSimulator() {
   const nextGateId = useRef(1);
 
   function setMode(mode: SimulatorMode) {
-    setSimulator((current) => (current.mode === mode ? current : { ...current, mode }));
+    setSimulator((current) =>
+      current.mode === mode
+        ? current
+        : {
+            ...current,
+            mode,
+            visualTransition: nextVisualTransition(current, "mode"),
+          },
+    );
   }
 
   function addState(initialState = QubitState.zero()) {
@@ -92,6 +104,7 @@ export function useSimulator() {
 
       return {
         ...current,
+        visualTransition: nextVisualTransition(current, "state-list"),
         states: [
           ...current.states,
           {
@@ -109,7 +122,7 @@ export function useSimulator() {
 
   function removeState(id: number) {
     setSimulator((current) => {
-      if (!current.states.some((state) => state.id === id)) {
+      if (current.states.length <= 1 || !current.states.some((state) => state.id === id)) {
         return current;
       }
 
@@ -126,6 +139,7 @@ export function useSimulator() {
     setSimulator((current) => ({
       ...current,
       states: current.states.map((state) => (state.id === id ? { ...state, initialState: normalized } : state)),
+      visualTransition: nextVisualTransition(current, "initial-state"),
     }));
   }
 
@@ -133,6 +147,7 @@ export function useSimulator() {
     setSimulator((current) => ({
       ...current,
       states: current.states.map((state) => (state.id === id ? { ...state, color } : state)),
+      visualTransition: nextVisualTransition(current, "appearance"),
     }));
   }
 
@@ -164,26 +179,21 @@ export function useSimulator() {
 
   function moveGate(target: GateTarget, id: string, direction: -1 | 1) {
     setSimulator((current) =>
-      updateGateSequence(
-        current,
-        target,
-        (sequence) => {
-          const index = sequence.gates.findIndex((gate) => gate.id === id);
+      updateGateSequence(current, target, (sequence) => {
+        const index = sequence.gates.findIndex((gate) => gate.id === id);
 
-          const destination = index + direction;
+        const destination = index + direction;
 
-          if (index === -1 || destination < 0 || destination >= sequence.gates.length) {
-            return sequence;
-          }
+        if (index === -1 || destination < 0 || destination >= sequence.gates.length) {
+          return sequence;
+        }
 
-          const gates = [...sequence.gates];
-          const [gate] = gates.splice(index, 1);
-          gates.splice(destination, 0, gate);
+        const gates = [...sequence.gates];
+        const [gate] = gates.splice(index, 1);
+        gates.splice(destination, 0, gate);
 
-          return { ...sequence, gates };
-        },
-        "move",
-      ),
+        return { ...sequence, gates };
+      }),
     );
   }
 
@@ -275,7 +285,7 @@ export function useSimulator() {
 
           return { ...sequence, gates };
         },
-        "move",
+        "edit",
       ),
     );
   }
@@ -303,7 +313,7 @@ export function useSimulator() {
       return {
         ...current,
         gateEditRevision: current.gateEditRevision + 1,
-        gateMoveRevision: current.gateMoveRevision + 1,
+        visualTransition: nextVisualTransition(current, "edit"),
         states: current.states.map((state) => {
           if (state.id === sourceId) {
             return {
@@ -330,36 +340,68 @@ export function useSimulator() {
     });
   }
 
-  function changeStep(target: GateTarget, change: (step: number) => number) {
+  function changeStep(target: GateTarget, change: (step: number) => number, kind: "step" | "jump") {
     setSimulator((current) =>
-      updateGateSequence(current, target, (sequence) => ({
-        ...sequence,
-        stepIndex: Math.max(0, Math.min(sequence.gates.length, change(sequence.stepIndex))),
-      })),
+      updateGateSequence(
+        current,
+        target,
+        (sequence) => ({
+          ...sequence,
+          stepIndex: Math.max(0, Math.min(sequence.gates.length, change(sequence.stepIndex))),
+        }),
+        kind,
+      ),
     );
   }
 
   function nextStep(target: GateTarget) {
-    changeStep(target, (step) => step + 1);
+    changeStep(target, (step) => step + 1, "step");
   }
 
   function previousStep(target: GateTarget) {
-    changeStep(target, (step) => step - 1);
+    changeStep(target, (step) => step - 1, "step");
   }
 
   function resetSteps(target: GateTarget) {
-    changeStep(target, () => 0);
+    changeStep(target, () => 0, "jump");
   }
 
   function jumpToStep(target: GateTarget, index: number) {
     if (!Number.isFinite(index)) return;
 
-    setSimulator((current) =>
-      updateGateSequence(current, target, (sequence) => ({
-        ...sequence,
-        stepIndex: Math.max(0, Math.min(sequence.gates.length, Math.trunc(index))),
-      })),
-    );
+    setSimulator((current) => {
+      const tracked = current.states.find((state) => state.id === target);
+
+      const previousStep = target === "shared" ? current.sharedStepIndex : tracked?.individualStepIndex;
+
+      const gateCount = target === "shared" ? current.sharedGates.length : tracked?.individualGates.length;
+
+      if (previousStep === undefined || gateCount === undefined) {
+        return current;
+      }
+
+      const nextIndex = Math.max(0, Math.min(gateCount, Math.trunc(index)));
+
+      if (nextIndex === previousStep) {
+        return current;
+      }
+
+      const difference = Math.abs(nextIndex - previousStep);
+
+      // Pontosan egy lépés: ugyanaz, mint a nyilakkal.
+      // Több lépés: ugrás, legrövidebb gömbi ívvel.
+      const kind = difference === 1 ? "step" : "jump";
+
+      return updateGateSequence(
+        current,
+        target,
+        (sequence) => ({
+          ...sequence,
+          stepIndex: nextIndex,
+        }),
+        kind,
+      );
+    });
   }
 
   return {

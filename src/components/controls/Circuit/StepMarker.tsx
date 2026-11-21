@@ -157,6 +157,15 @@ export default function StepMarker({
             old.count === gateCount + 1 &&
             old.step === stepIndex + 1;
 
+        // Teljes kapusor törlése
+        const clearedSequence =
+            old !== null &&
+            editChanged &&
+            old.count > 0 &&
+            gateCount === 0 &&
+            old.step > 0 &&
+            stepIndex === 0;
+
         // Normál előre-/visszaléptetés
         const normalStep =
             stepChanged && !editChanged && !jumpChanged;
@@ -167,7 +176,7 @@ export default function StepMarker({
 
         let duration = 0;
 
-        if (normalStep || deletedBeforeStep) {
+        if (normalStep || deletedBeforeStep || clearedSequence) {
             duration = STEP_DURATION;
         } else if (previewChanged) {
             duration = DRAG_DURATION;
@@ -194,18 +203,88 @@ export default function StepMarker({
 
     // Görgetéskor és ablakméret-változáskor igazítás
     useEffect(() => {
-        function updatePosition() {
+        const track = document.querySelector<HTMLElement>(
+            `.qc-track[data-row-target="${target}"]`,
+        );
+
+        const scrollContainer = track?.closest<HTMLElement>(
+            ".qc-row-scroll",
+        );
+
+        const bottomPanel = track?.closest<HTMLElement>(
+            ".sim-bottom",
+        );
+
+        // Csak az overlay elhelyezkedését és a marker
+        // függőleges pozícióját frissíti.
+        // A vízszintes animációt nem szakítja meg.
+        function updateLayout() {
+            const overlay = overlayRef.current;
+            const marker = markerRef.current;
+
+            const position = getMarkerPosition(
+                target,
+                stepIndex,
+                hoveredSlot,
+            );
+
+            if (!overlay || !marker || !position) return;
+
+            const { viewport } = position;
+
+            overlay.style.left = `${viewport.left}px`;
+            overlay.style.top = `${viewport.top}px`;
+            overlay.style.width = `${viewport.width}px`;
+            overlay.style.height = `${viewport.height}px`;
+
+            marker.style.top = `${position.top}px`;
+        }
+
+        let lastScrollLeft = scrollContainer?.scrollLeft ?? 0;
+
+        function onScroll() {
+            const currentScrollLeft =
+                scrollContainer?.scrollLeft ?? 0;
+
+            const horizontallyScrolled =
+                Math.abs(currentScrollLeft - lastScrollLeft) > 0.01;
+
+            lastScrollLeft = currentScrollLeft;
+
+            if (horizontallyScrolled) {
+                // Vízszintes görgetéskor azonnali igazítás.
+                updateMarkerPosition(0);
+            } else {
+                // Függőleges elmozdulásnál
+                // megőrizzük a futó animációt.
+                updateLayout();
+            }
+        }
+
+        function onWindowResize() {
             updateMarkerPosition(0);
         }
 
-        window.addEventListener("resize", updatePosition);
-        window.addEventListener("scroll", updatePosition, true);
+        const resizeObserver = new ResizeObserver(updateLayout);
+
+        if (bottomPanel) {
+            resizeObserver.observe(bottomPanel);
+        }
+
+        if (scrollContainer) {
+            resizeObserver.observe(scrollContainer);
+        }
+
+        window.addEventListener("resize", onWindowResize);
+        window.addEventListener("scroll", onScroll, true);
 
         return () => {
-            window.removeEventListener("resize", updatePosition);
-            window.removeEventListener("scroll", updatePosition, true);
+            window.removeEventListener("resize", onWindowResize);
+            window.removeEventListener("scroll", onScroll, true);
+
+            resizeObserver.disconnect();
         };
-    }, [updateMarkerPosition]);
+    }, [target, stepIndex, hoveredSlot, updateMarkerPosition]);
 
     return createPortal(
         <div

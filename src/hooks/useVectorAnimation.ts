@@ -108,23 +108,37 @@ export function useVectorAnimation(initialDirection: BlochVector, progressRef: P
     [progressRef],
   );
 
+  // Wait for another vector to reach this one, without snapping an
+  // animation that was already in progress. Keep history progress unchanged.
   const waitForMerge = useCallback((targetDirection: Vector3) => {
+    const target = targetDirection.clone().normalize();
+    const currentTarget = UP.clone().applyQuaternion(to.current).normalize();
+
+    // A previous transition is already heading toward this target.
+    if (elapsed.current < DURATION && currentTarget.distanceToSquared(target) < 1e-10) {
+      return;
+    }
+
+    const displayed = UP.clone()
+      .applyQuaternion(groupRef.current?.quaternion ?? to.current)
+      .normalize();
+
+    // The previous transition was interrupted, and we're not yet at the
+    // merge point. Finish the remaining distance smoothly, not by snapping.
+    if (displayed.distanceToSquared(target) >= 1e-10) {
+      startShortest(target);
+      return;
+    }
+
     shortestPath.current = false;
-    // A matematikailag helyes célirány beállítása.
-    to.current.setFromUnitVectors(UP, targetDirection.clone().normalize());
-
-    from.current.copy(to.current);
-    groupRef.current?.quaternion.copy(to.current);
-
-    // Csak várakozunk, nem forgatunk.
     gatePath.current = false;
     holdOnly.current = true;
+    to.current.setFromUnitVectors(UP, target);
+    from.current.copy(groupRef.current?.quaternion ?? to.current);
 
     elapsed.current = 0;
     justFinished.current = false;
-
-    // progressRef változatlan marad.
-  }, []);
+  }, [startShortest]);
 
   const isRunning = useCallback(() => elapsed.current < DURATION, []);
 

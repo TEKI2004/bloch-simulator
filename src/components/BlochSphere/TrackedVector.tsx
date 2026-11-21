@@ -6,6 +6,7 @@ import HistoryCurve from "./HistoryCurve";
 import { getHistorySegments } from "../../simulator/history";
 import type { BlochVector } from "../../quantum/bloch";
 import type { DisplayState } from "./vectorGrouping";
+import type { VisualTransition } from "../../simulator/SimulatorState";
 
 type Props = {
     vector: DisplayState;
@@ -16,7 +17,7 @@ type Props = {
     mergeAnimationKey: string;
     gateEditRevision: number;
     keepMergedDuringAnimation: boolean;
-    gateMoveRevision: number;
+    visualTransition: VisualTransition;
 };
 
 export default function TrackedVector({
@@ -28,7 +29,7 @@ export default function TrackedVector({
     mergeAnimationKey,
     gateEditRevision,
     keepMergedDuringAnimation,
-    gateMoveRevision,
+    visualTransition,
 }: Props) {
     const progressRef = useRef(1);
 
@@ -50,10 +51,12 @@ export default function TrackedVector({
                 gates={gates}
                 progressRef={progressRef}
                 gateEditRevision={gateEditRevision}
+                visualTransition={visualTransition}
             />
 
             <StateVector
                 direction={direction}
+                initialState={vector.initialState}
                 color={vector.color}
                 label={label}
                 gates={gates}
@@ -65,8 +68,7 @@ export default function TrackedVector({
                 progressRef={progressRef}
                 ownLabel={vector.label}
                 keepMergedDuringAnimation={keepMergedDuringAnimation}
-                gateEditRevision={gateEditRevision}
-                gateMoveRevision={gateMoveRevision}
+                visualTransition={visualTransition}
             />
         </>
     );

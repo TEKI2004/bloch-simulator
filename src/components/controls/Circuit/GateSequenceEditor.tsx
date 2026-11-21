@@ -1,5 +1,5 @@
 
-import type { GateStep } from "../../simulator/SimulatorState";
+import type { GateStep } from "../../../simulator/SimulatorState";
 
 type Props = {
     gates: GateStep[];

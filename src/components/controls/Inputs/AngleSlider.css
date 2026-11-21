@@ -1,0 +1,159 @@
+.angle-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  width: 100%;
+  min-width: 0;
+}
+
+.angle-slider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.angle-slider-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.angle-slider-symbol {
+  display: grid;
+  place-items: center;
+
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+
+  border-radius: 8px;
+  background: rgba(34, 211, 238, 0.08);
+
+  color: #22d3ee;
+  font-family: "Cambria Math", serif;
+  font-size: 20px;
+}
+
+.angle-slider-label {
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Numerikus érték */
+
+.angle-slider .numeric-input {
+  width: 100px;
+  height: 34px;
+  flex-shrink: 0;
+}
+
+/* Csúszka */
+
+.sim-layout .angle-slider-range {
+  display: block;
+  width: 100%;
+  height: 24px;
+
+  margin: 0;
+  padding: 0;
+
+  appearance: none;
+  -webkit-appearance: none;
+
+  border: none;
+  outline: none;
+  cursor: pointer;
+
+  background: linear-gradient(to right, #22d3ee 0%, #22d3ee var(--angle-progress), #35445b var(--angle-progress), #35445b 100%);
+
+  background-size: 100% 6px;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: 999px;
+}
+
+/* Chrome, Edge, Safari */
+
+.angle-slider-range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.angle-slider-range::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+
+  width: 17px;
+  height: 17px;
+  margin-top: -5.5px;
+
+  border: 3px solid #22d3ee;
+  border-radius: 50%;
+  background: #172235;
+
+  box-shadow: 0 0 0 3px #172235;
+
+  transition:
+    box-shadow 120ms ease,
+    background 120ms ease;
+}
+
+/* Firefox */
+
+.angle-slider-range::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.angle-slider-range::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+
+  border: 3px solid #22d3ee;
+  border-radius: 50%;
+  background: #172235;
+
+  box-shadow: 0 0 0 3px #172235;
+}
+
+/* Hover és fókusz */
+
+.angle-slider-range:hover::-webkit-slider-thumb {
+  background: #22d3ee;
+  box-shadow: 0 0 0 5px rgba(34, 211, 238, 0.12);
+}
+
+.angle-slider-range:hover::-moz-range-thumb {
+  background: #22d3ee;
+  box-shadow: 0 0 0 5px rgba(34, 211, 238, 0.12);
+}
+
+.sim-layout .angle-slider-range:focus-visible {
+  outline: 2px solid #22d3ee;
+  outline-offset: 3px;
+}
+
+/* Tartományhatárok */
+
+.angle-slider-limits {
+  display: flex;
+  justify-content: space-between;
+
+  color: #64748b;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .angle-slider-range::-webkit-slider-thumb {
+    transition: none;
+  }
+}

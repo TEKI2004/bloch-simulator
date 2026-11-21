@@ -1,0 +1,84 @@
+.state-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  margin-top: 14px;
+  margin-bottom: 18px;
+}
+
+.state-tab {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 42px;
+
+  background: #172235;
+  border: 1px solid #405066;
+  border-radius: 8px;
+
+  transition:
+    background 150ms ease,
+    border-color 150ms ease;
+}
+
+.state-tab:hover {
+  background: #243348;
+  border-color: var(--state-color);
+}
+
+.state-tab-selected {
+  background: #243348;
+  border-color: var(--state-color);
+}
+
+.sim-layout .state-tab-select {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 10px;
+
+  background: transparent;
+  border: none;
+
+  color: var(--state-color);
+  font-family: "Cambria Math", serif;
+  font-size: 19px;
+  text-align: center;
+}
+
+.sim-layout .state-tab-select:hover:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+}
+
+.sim-layout .state-tab-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  width: 27px;
+  height: 32px;
+  padding: 0;
+  margin-right: 4px;
+
+  background: transparent;
+  border: none;
+
+  color: #64748b;
+  font-size: 19px;
+  line-height: 1;
+}
+
+.sim-layout .state-tab-remove:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.1);
+  border-color: transparent;
+  color: #f87171;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .state-tab {
+    transition: none;
+  }
+}

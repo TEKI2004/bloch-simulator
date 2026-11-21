@@ -2,8 +2,8 @@
 import type {
     SimulatorMode,
     TrackedState,
-} from "../../simulator/SimulatorState";
-import { STATE_LABELS } from "../../simulator/statePresets";
+} from "../../../simulator/SimulatorState";
+import { STATE_LABELS } from "../../../simulator/statePresets";
 import "./ModeSelector.css";
 
 type Props = {

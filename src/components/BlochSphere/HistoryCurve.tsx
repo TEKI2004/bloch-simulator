@@ -7,6 +7,7 @@ import type { HistorySegment } from "../../simulator/history";
 import type {
     GateStep,
     SimulatorMode,
+    VisualTransition,
 } from "../../simulator/SimulatorState";
 import { memo } from "react";
 
@@ -18,6 +19,7 @@ type Props = {
     progressRef: { current: number };
     gates: GateStep[];
     gateEditRevision: number;
+    visualTransition: VisualTransition;
 };
 
 export function HistoryCurve({
@@ -28,6 +30,7 @@ export function HistoryCurve({
     progressRef,
     gates,
     gateEditRevision,
+    visualTransition,
 }: Props) {
     const transition = useHistoryTransition({
         segments,
@@ -35,6 +38,7 @@ export function HistoryCurve({
         stepIndex,
         mode,
         gateEditRevision,
+        visualTransition,
     });
 
     return (

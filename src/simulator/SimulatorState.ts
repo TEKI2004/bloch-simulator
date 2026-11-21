@@ -7,6 +7,23 @@ export const DEFAULT_STATE_COLORS = ["#22D3EE", "#FB923C", "#C084FC", "#4ADE80"]
 
 export type SimulatorMode = "shared" | "individual";
 
+// Explicit intent for 3D transitions. Only direct initial-state editing snaps.
+// Revisions make consecutive actions of the same kind independently observable.
+export type VisualTransitionKind =
+  | "none"
+  | "initial-state"
+  | "step"
+  | "jump"
+  | "edit"
+  | "mode"
+  | "state-list"
+  | "appearance";
+
+export type VisualTransition = {
+  revision: number;
+  kind: VisualTransitionKind;
+};
+
 export type GateParameter = {
   kind: "P" | "Rx" | "Ry" | "Rz";
   angle: number; // radián
@@ -35,7 +52,7 @@ export type SimulatorState = {
   sharedStepIndex: number;
   gateEditRevision: number;
   instantJumpRevision: number;
-  gateMoveRevision: number;
+  visualTransition: VisualTransition;
 };
 
 export function getCurrentState(tracked: TrackedState, simulator: SimulatorState): QubitState {
@@ -62,6 +79,6 @@ export function createInitialSimulatorState(): SimulatorState {
     sharedStepIndex: 0,
     gateEditRevision: 0,
     instantJumpRevision: 0,
-    gateMoveRevision: 0,
+    visualTransition: { revision: 0, kind: "none" },
   };
 }

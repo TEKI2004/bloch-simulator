@@ -4,14 +4,14 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 
 import BlochSphere from "./components/BlochSphere/BlochSphere";
-import StateSelector from "./components/controls/StateSelector";
-import ModeSelector from "./components/controls/ModeSelector";
-import InitialStatePanel from "./components/controls/InitialStatePanel";
-import GatePalette from "./components/controls/GatePalette";
-import PlaybackControls from "./components/controls/PlaybackControls";
-import StateInfoPanel from "./components/controls/StateInfoPanel";
+import ModeSelector from "./components/controls/Playback/ModeSelector";
+import InitialStatePanel from "./components/controls/State/InitialStatePanel";
+import GatePalette from "./components/controls/Circuit/GatePalette";
+import PlaybackControls from "./components/controls/Playback/PlaybackControls";
+import StateInfoPanel from "./components/controls/State/StateInfoPanel";
 import SimulatorLayout from "./components/layout/SimulatorLayout";
-import CircuitRows from "./components/controls/CircuitRows";
+import CircuitRows from "./components/controls/Circuit/CircuitRows";
+
 
 import { useSimulator } from "./hooks/useSimulator";
 import { usePlayback } from "./hooks/usePlayback";
@@ -114,19 +114,43 @@ export default function App() {
     setSelectedStateId(id);
   }
 
+
   function deleteState(id: number) {
+    if (simulator.states.length <= 1) return;
+
+    const remaining = simulator.states
+      .filter((state) => state.id !== id)
+      .sort((a, b) => a.id - b.id);
+
+    if (remaining.length === simulator.states.length) {
+      return;
+    }
+
     stopPlayback();
-    removeState(id);
 
     if (selectedState?.id === id) {
-      const remaining = simulator.states.find(
-        (state) => state.id !== id,
-      );
+      const next =
+        remaining.find((state) => state.id > id) ??
+        remaining[remaining.length - 1];
 
-      setSelectedStateId(remaining?.id ?? 1);
+      setSelectedStateId(next.id);
     }
+
+    removeState(id);
   }
 
+
+  function createState() {
+    if (nextIndex === -1) return;
+
+    stopPlayback();
+
+    const id = nextIndex + 1;
+
+    addState(INITIAL_STATE_PRESETS[nextIndex]());
+
+    setSelectedStateId(id);
+  }
 
   return (
     <SimulatorLayout
@@ -135,6 +159,7 @@ export default function App() {
           states={simulator.states}
           selectedState={selectedState}
           onSelect={selectState}
+          onRemove={deleteState}
           onColorChange={setStateColor}
           onInitialStateChange={setInitialState}
         />
@@ -158,7 +183,7 @@ export default function App() {
             gateEditRevision={
               simulator.gateEditRevision + simulator.instantJumpRevision
             }
-            gateMoveRevision={simulator.gateMoveRevision}
+            visualTransition={simulator.visualTransition}
           />
 
           <OrbitControls
@@ -231,24 +256,6 @@ export default function App() {
             />
           </div>
 
-          {/* Állapotvektorok kezelése */}
-          <div className="sim-state-selector">
-            <StateSelector
-              states={simulator.states}
-              selectedStateId={selectedState?.id}
-              canAdd={nextIndex !== -1}
-              onSelect={selectState}
-              onRemove={deleteState}
-              onAdd={() => {
-                if (nextIndex === -1) return;
-
-                stopPlayback();
-                addState(INITIAL_STATE_PRESETS[nextIndex]());
-              }}
-            />
-          </div>
-
-
           {/* Composer-szerű kapusorok */}
           <CircuitRows
             simulator={simulator}
@@ -293,6 +300,7 @@ export default function App() {
               stopPlayback();
               clearGates(rowTarget);
             }}
+            onAddState={createState}
           />
         </>
       }

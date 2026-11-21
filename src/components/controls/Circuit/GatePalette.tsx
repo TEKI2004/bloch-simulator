@@ -1,6 +1,6 @@
 
-import { GATE_OPTIONS } from "../../simulator/gateCatalog";
-import type { GateOption } from "../../simulator/gateCatalog";
+import { GATE_OPTIONS } from "../../../simulator/gateCatalog";
+import type { GateOption } from "../../../simulator/gateCatalog";
 
 type Props = {
     disabled: boolean;

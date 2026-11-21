@@ -1,0 +1,78 @@
+.qc-add-track {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) 52px;
+  align-items: center;
+  column-gap: 4px;
+
+  width: 100%;
+  min-height: 62px;
+  padding: 4px 8px;
+
+  border: 1px dashed #475569;
+  border-radius: 9px;
+  background: rgba(148, 163, 184, 0.025);
+
+  color: #94a3b8;
+  cursor: pointer;
+
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.qc-add-track-label {
+  padding: 4px 3px;
+
+  font-family: "Cambria Math", serif;
+  font-size: 17px;
+  white-space: nowrap;
+
+  opacity: 0.6;
+  transition: opacity 150ms ease;
+}
+
+.qc-add-track-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  min-height: 44px;
+
+  font-family: "Inter", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.qc-add-track-icon {
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.qc-add-track-spacer {
+  width: 52px;
+}
+
+.sim-layout .qc-add-track:hover {
+  background: rgba(34, 211, 238, 0.06);
+  border-color: #22d3ee;
+  color: #22d3ee;
+}
+
+.qc-add-track:hover .qc-add-track-label {
+  opacity: 1;
+}
+
+.sim-layout .qc-add-track:focus-visible {
+  outline: 2px solid #22d3ee;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qc-add-track,
+  .qc-add-track-label {
+    transition: none;
+  }
+}
