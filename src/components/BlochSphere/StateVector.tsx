@@ -1,16 +1,19 @@
 
 import { Html, Line } from "@react-three/drei";
-import { useFrame } from "@react-three/fiber";
-import { useEffect, useRef, useState } from "react";
-import { Group, Quaternion, Vector3 } from "three";
+import { useEffect, useRef } from "react";
+import { Vector3 } from "three";
+
+import { useVectorAnimation } from "../../hooks/useVectorAnimation";
+import { useVectorVisibility } from "../../hooks/useVectorVisibility";
 import { getGateRotation } from "../../quantum/gateRotation";
+import type { BlochVector } from "../../quantum/bloch";
 import type {
     GateStep,
     SimulatorMode,
 } from "../../simulator/SimulatorState";
 
 type Props = {
-    direction: [number, number, number];
+    direction: BlochVector;
     color: string;
     label: string;
     gates: GateStep[];
@@ -22,10 +25,8 @@ type Props = {
     progressRef: { current: number };
     ownLabel: string;
     keepMergedDuringAnimation?: boolean;
+    gateEditRevision: number;
 };
-
-const UP = new Vector3(0, 1, 0);
-const DURATION = 0.45;
 
 export default function StateVector({
     direction,
@@ -39,43 +40,37 @@ export default function StateVector({
     mergeAnimationKey,
     progressRef,
     ownLabel,
-    keepMergedDuringAnimation,
+    keepMergedDuringAnimation = false,
+    gateEditRevision,
 }: Props) {
-    const [initialRotation] = useState(() =>
-        new Quaternion().setFromUnitVectors(
-            UP,
-            new Vector3(...direction).normalize(),
-        ),
-    );
-
-    const [displayHidden, setDisplayHidden] = useState(mergedHidden);
-    const [displayLabel, setDisplayLabel] = useState(label);
-
-    const groupRef = useRef<Group>(null);
-
+    // Előző szimulációs állapot
     const lastGates = useRef(gates);
-    const lastDirection = useRef(new Vector3(...direction).normalize());
+    const lastDirection = useRef(
+        new Vector3(...direction).normalize(),
+    );
     const lastStepIndex = useRef(stepIndex);
     const lastMode = useRef(mode);
     const lastMergedHidden = useRef(mergedHidden);
     const lastMergeAnimationKey = useRef(mergeAnimationKey);
+    const lastGateEditRevision = useRef(gateEditRevision);
 
-    const pendingHide = useRef(false);
-    const pendingLabel = useRef<string | null>(null);
+    // Forgásanimáció
+    const {
+        groupRef,
+        initialRotation,
+        start,
+        snap,
+        isRunning,
+        consumeFinished,
+    } = useVectorAnimation(direction, progressRef);
 
-    const from = useRef(initialRotation.clone());
-    const to = useRef(initialRotation.clone());
-    const elapsed = useRef(DURATION);
-
-    // A tényleges kapuforgás adatai
-    const useGatePath = useRef(false);
-    const rotationAxis = useRef(new Vector3(0, 0, 1));
-    const rotationAngle = useRef(0);
-    const startDirection = useRef(new Vector3(...direction).normalize());
-
-    const tempQuaternion = useRef(new Quaternion());
-    const tempDirection = useRef(new Vector3());
-
+    // Feliratok és láthatóság
+    const {
+        displayHidden,
+        displayLabel,
+        getCurrentLabel,
+        updateVisibility,
+    } = useVectorVisibility(label, mergedHidden, consumeFinished);
 
     useEffect(() => {
         const next = new Vector3(...direction).normalize();
@@ -84,16 +79,21 @@ export default function StateVector({
         const previousStep = lastStepIndex.current;
         const previousMode = lastMode.current;
 
+        const editChanged =
+            lastGateEditRevision.current !== gateEditRevision;
+
+        lastGateEditRevision.current = gateEditRevision;
+
         const gatesChanged = lastGates.current !== gates;
-        lastGates.current = gates;
 
         const mergeStepChanged =
-            !gatesChanged && previousMode === mode &&
+            !editChanged &&
+            !gatesChanged &&
+            previousMode === mode &&
             lastMergeAnimationKey.current !== mergeAnimationKey;
 
-        lastMergeAnimationKey.current = mergeAnimationKey;
-
         const shouldAnimate =
+            !editChanged &&
             previousMode === mode &&
             !gatesChanged &&
             previousStep !== stepIndex;
@@ -102,7 +102,6 @@ export default function StateVector({
             previousDirection.distanceToSquared(next) >= 1e-10;
 
         const wasHidden = lastMergedHidden.current;
-
         const newlyHidden = mergedHidden && !wasHidden;
         const newlyVisible = !mergedHidden && wasHidden;
 
@@ -110,169 +109,75 @@ export default function StateVector({
             mergeStepChanged &&
             (
                 newlyHidden ||
-                (label.includes(", ") && label !== displayLabel)
+                (
+                    label.includes(", ") &&
+                    label !== getCurrentLabel()
+                )
             );
 
+        // Előző állapot frissítése
+        lastGates.current = gates;
+        lastDirection.current.copy(next);
         lastStepIndex.current = stepIndex;
         lastMode.current = mode;
         lastMergedHidden.current = mergedHidden;
-        lastDirection.current.copy(next);
+        lastMergeAnimationKey.current = mergeAnimationKey;
 
-        const stepDifference = stepIndex - previousStep;
-        let rotation = null;
+        // Alkalmazott kvantumkapu
+        const difference = stepIndex - previousStep;
 
-        if (shouldAnimate && Math.abs(stepDifference) === 1) {
-            const gateIndex = Math.min(previousStep, stepIndex);
-            const gate = gates[gateIndex];
+        const gate =
+            shouldAnimate && Math.abs(difference) === 1
+                ? gates[Math.min(previousStep, stepIndex)]
+                : undefined;
 
-            if (gate) {
-                rotation = getGateRotation(gate);
-            }
-        }
-
-        to.current.setFromUnitVectors(UP, next);
+        const rotation = gate ? getGateRotation(gate) : null;
 
         const animate =
-            (shouldAnimate &&
-                (directionChanged || newlyHidden || rotation !== null)) ||
+            (
+                shouldAnimate &&
+                (directionChanged || newlyHidden || rotation !== null)
+            ) ||
             mergeTransition;
 
-        if (animate) {
-            progressRef.current = 0;
-
-            const previousAnimationFinished = elapsed.current >= DURATION;
-
-            from.current.copy(
-                groupRef.current?.quaternion ?? to.current,
-            );
-
-            useGatePath.current = false;
-
-            if (rotation && previousAnimationFinished) {
-                rotationAxis.current.set(...rotation.axis).normalize();
-                rotationAngle.current =
-                    rotation.angle * Math.sign(stepDifference);
-
-                startDirection.current.copy(previousDirection);
-                useGatePath.current = true;
-            }
-
-            elapsed.current = 0;
+        // Mozgás vezérlése
+        if (editChanged) {
+            // Kapusor szerkesztése: minden vektor azonnal frissül.
+            snap(next);
+        } else if (animate) {
+            start(previousDirection, next, rotation, difference);
         } else if (directionChanged || gatesChanged) {
-            // Kezdőállapot szerkesztése: azonnali követés
-            groupRef.current?.quaternion.copy(to.current);
-            elapsed.current = DURATION;
-            useGatePath.current = false;
-            progressRef.current = 1;
+            snap(next);
         }
 
-        // Láthatóság és feliratok kezelése
-        const isAnimating = elapsed.current < DURATION;
-
-        if (isAnimating && keepMergedDuringAnimation) {
-            // Az együtt mozgó vektorok végig összevonva maradnak.
-            pendingHide.current = false;
-            pendingLabel.current = null;
-
-            setDisplayHidden(mergedHidden);
-            setDisplayLabel(label);
-
-        } else if (isAnimating) {
-            setDisplayHidden(false);
-            pendingHide.current = mergedHidden;
-
-            const isMoving = shouldAnimate && directionChanged;
-
-            const oldCount = displayLabel
-                ? displayLabel.split(",").length
-                : 0;
-
-            const newCount = label
-                ? label.split(",").length
-                : 0;
-
-            if (isMoving) {
-                // A mozgó vektor csak a saját feliratát viszi magával.
-                setDisplayLabel(ownLabel);
-                pendingLabel.current = label === ownLabel ? null : label;
-
-            } else if (
-                newlyVisible ||
-                (!mergedHidden && newCount < oldCount)
-            ) {
-                // Szétválás: a helyben maradó vektor
-                // azonnal megkapja az új feliratát.
-                pendingLabel.current = null;
-                setDisplayLabel(label);
-
-            } else if (mergedHidden || newCount > oldCount) {
-                // Összeolvadás: várjuk meg az animáció végét.
-                pendingLabel.current = label;
-
-            } else {
-                pendingLabel.current = null;
-                setDisplayLabel(label);
-            }
-
-        } else {
-            pendingHide.current = false;
-            pendingLabel.current = null;
-
-            setDisplayHidden(mergedHidden);
-            setDisplayLabel(label);
-        }
-    }, [direction, gates, stepIndex, mode, mergedHidden, label, mergeAnimationKey, keepMergedDuringAnimation]);
-
-
-    useFrame((_, delta) => {
-        if (!groupRef.current || elapsed.current >= DURATION) return;
-
-        elapsed.current = Math.min(DURATION, elapsed.current + delta);
-
-        const t = elapsed.current / DURATION;
-        const eased = t * t * (3 - 2 * t);
-
-        progressRef.current = eased;
-
-        if (useGatePath.current) {
-            // Forgatás a kapu tengelye körül
-            tempQuaternion.current.setFromAxisAngle(
-                rotationAxis.current,
-                rotationAngle.current * eased,
-            );
-
-            tempDirection.current
-                .copy(startDirection.current)
-                .applyQuaternion(tempQuaternion.current)
-                .normalize();
-
-            groupRef.current.quaternion.setFromUnitVectors(
-                UP,
-                tempDirection.current,
-            );
-        } else {
-            // Tartalék interpoláció több lépéses ugrásnál
-            groupRef.current.quaternion.slerpQuaternions(
-                from.current,
-                to.current,
-                eased,
-            );
-        }
-
-        if (elapsed.current >= DURATION) {
-            groupRef.current.quaternion.copy(to.current);
-
-            if (pendingHide.current) {
-                pendingHide.current = false;
-                setDisplayHidden(true);
-            }
-
-            if (pendingLabel.current !== null) {
-                setDisplayLabel(pendingLabel.current);
-                pendingLabel.current = null;
-            }
-        }
-    });
+        // Megjelenítés vezérlése
+        updateVisibility({
+            label,
+            ownLabel,
+            mergedHidden,
+            isAnimating: editChanged ? false : isRunning(),
+            keepMergedDuringAnimation,
+            shouldAnimate,
+            directionChanged,
+            newlyVisible,
+        });
+    }, [
+        direction,
+        label,
+        gates,
+        stepIndex,
+        mode,
+        mergedHidden,
+        mergeAnimationKey,
+        ownLabel,
+        keepMergedDuringAnimation,
+        gateEditRevision,
+        start,
+        snap,
+        isRunning,
+        getCurrentLabel,
+        updateVisibility,
+    ]);
 
     return (
         <group

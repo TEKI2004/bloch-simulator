@@ -1,58 +1,23 @@
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
+
 import BlochSphere from "./components/BlochSphere/BlochSphere";
-import InitialStateEditor from "./components/InitialStateEditor";
+import StateSelector from "./components/controls/StateSelector";
+import ModeSelector from "./components/controls/ModeSelector";
+import InitialStatePanel from "./components/controls/InitialStatePanel";
+import GatePalette from "./components/controls/GatePalette";
+import GateSequenceEditor from "./components/controls/GateSequenceEditor";
+import PlaybackControls from "./components/controls/PlaybackControls";
+
 import { useSimulator } from "./hooks/useSimulator";
+import { usePlayback } from "./hooks/usePlayback";
+
 import { getCurrentState, MAX_STATES } from "./simulator/SimulatorState";
-import { QubitState } from "./quantum/QubitState";
-import type { Matrix2 } from "./quantum/Matrix2";
-import type { GateParameter } from "./simulator/SimulatorState";
-import { X, H, S, T, P, Rx, Ry, Rz } from "./quantum/gates";
-import { getHistorySegments } from "./simulator/history";
+import { STATE_LABELS, INITIAL_STATE_PRESETS } from "./simulator/statePresets";
 
-type GateOption = {
-  label: string;
-  matrix: Matrix2;
-  parameter?: GateParameter;
-};
 
-const gates: GateOption[] = [
-  { label: "X", matrix: X },
-  { label: "H", matrix: H },
-  { label: "S", matrix: S },
-  { label: "T", matrix: T },
-  {
-    label: "P(90°)",
-    matrix: P(Math.PI / 2),
-    parameter: { kind: "P", angle: Math.PI / 2 },
-  },
-  {
-    label: "Rx(90°)",
-    matrix: Rx(Math.PI / 2),
-    parameter: { kind: "Rx", angle: Math.PI / 2 },
-  },
-  {
-    label: "Ry(90°)",
-    matrix: Ry(Math.PI / 2),
-    parameter: { kind: "Ry", angle: Math.PI / 2 },
-  },
-  {
-    label: "Rz(90°)",
-    matrix: Rz(Math.PI / 2),
-    parameter: { kind: "Rz", angle: Math.PI / 2 },
-  },
-];
-
-const initialStates = [
-  () => QubitState.zero(),
-  () => QubitState.fromAngles(Math.PI / 2, 0),
-  () => QubitState.fromAngles(Math.PI / 2, Math.PI / 2),
-  () => QubitState.one(),
-];
-
-const labels = ["|ψ₁⟩", "|ψ₂⟩", "|ψ₃⟩", "|ψ₄⟩"];
 
 export default function App() {
   const {
@@ -72,14 +37,14 @@ export default function App() {
     resetSteps,
   } = useSimulator();
 
-  const [isPlaying, setIsPlaying] = useState(false);
-
   const [selectedStateId, setSelectedStateId] = useState(1);
 
+  // Kiválasztott állapotvektor
   const selectedState =
-    simulator.states.find((state) => state.id === selectedStateId)
+    simulator.states.find((s) => s.id === selectedStateId)
     ?? simulator.states[0];
 
+  // Aktív kapusor
   const target = simulator.mode === "shared"
     ? "shared" as const
     : (selectedState?.id ?? null);
@@ -92,28 +57,28 @@ export default function App() {
     ? simulator.sharedStepIndex
     : (selectedState?.individualStepIndex ?? 0);
 
-  useEffect(() => {
-    if (!isPlaying) return;
+  // Automatikus lejátszás
+  const {
+    isPlaying,
+    stopPlayback,
+    togglePlayback,
+  } = usePlayback({
+    target,
+    stepIndex: activeStepIndex,
+    totalSteps: activeGates.length,
+    nextStep,
+  });
 
-    if (target === null || activeStepIndex >= activeGates.length) {
-      setIsPlaying(false);
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      nextStep(target);
-    }, 650);
-
-    return () => window.clearTimeout(timeout);
-  }, [isPlaying, target, activeStepIndex, activeGates.length, nextStep]);
+  // Megjelenítendő vektorok
 
   const vectors = simulator.states
     .filter((tracked) => tracked.visible)
     .map((tracked) => ({
       id: tracked.id,
       state: getCurrentState(tracked, simulator),
+      initialState: tracked.initialState,
       color: tracked.color,
-      label: labels[tracked.id - 1],
+      label: STATE_LABELS[tracked.id - 1],
       gates: simulator.mode === "shared"
         ? simulator.sharedGates
         : tracked.individualGates,
@@ -121,7 +86,6 @@ export default function App() {
         ? simulator.sharedStepIndex
         : tracked.individualStepIndex,
       mode: simulator.mode,
-      history: getHistorySegments(tracked, simulator),
     }));
 
   const mergeAnimationKey = simulator.mode === "shared"
@@ -130,18 +94,51 @@ export default function App() {
       .map((s) => `${s.id}:${s.individualStepIndex}`)
       .join(",")}`;
 
+  // Első szabad állapotazonosító
   const nextIndex = Array.from({ length: MAX_STATES }, (_, i) => i)
-    .find((i) => !simulator.states.some((state) => state.id === i + 1)) ?? -1;
+    .find((i) =>
+      !simulator.states.some((state) => state.id === i + 1)
+    ) ?? -1;
+
+  function selectState(id: number) {
+    stopPlayback();
+    setSelectedStateId(id);
+  }
+
+  function deleteState(id: number) {
+    stopPlayback();
+    removeState(id);
+
+    if (selectedState?.id === id) {
+      const remaining = simulator.states.find(
+        (state) => state.id !== id,
+      );
+
+      setSelectedStateId(remaining?.id ?? 1);
+    }
+  }
 
   return (
-    <div style={{ width: "100%", height: "100%", position: "relative" }}>
-      <Canvas camera={{ position: [3, 3, 2], fov: 45, up: [0, 0, 1] }}>
+    <div style={{
+      width: "100%",
+      height: "100%",
+      position: "relative",
+    }}>
+      {/* 3D jelenet */}
+      <Canvas camera={{
+        position: [3, 3, 2],
+        fov: 45,
+        up: [0, 0, 1],
+      }}>
         <color attach="background" args={["#101827"]} />
+
         <BlochSphere
           vectors={vectors}
           selectedStateId={selectedState?.id}
           mergeAnimationKey={mergeAnimationKey}
+          gateEditRevision={simulator.gateEditRevision}
         />
+
         <OrbitControls
           target={[0, 0, 0]}
           enablePan={false}
@@ -151,61 +148,14 @@ export default function App() {
         />
       </Canvas>
 
-      {/* Kezdőállapot-szerkesztő */}
-      <div style={{
-        position: "absolute",
-        top: 24,
-        left: 24,
-        width: 250,
-        padding: 16,
-        background: "#1E293B",
-        color: "white",
-        borderRadius: 12,
-      }}>
-        <h3>Kezdőállapot</h3>
-
-        {selectedState && (
-          <>
-            <select
-              value={selectedState.id}
-              onChange={(e) => {
-                setIsPlaying(false);
-                setSelectedStateId(Number(e.target.value));
-              }}
-            >
-              {simulator.states.map((tracked) => (
-                <option key={tracked.id} value={tracked.id}>
-                  {labels[tracked.id - 1]}
-                </option>
-              ))}
-            </select>
-
-            <label style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              marginTop: 12,
-            }}>
-              Szín:
-              <input
-                type="color"
-                value={selectedState.color}
-                onChange={(e) =>
-                  setStateColor(selectedState.id, e.target.value)
-                }
-              />
-            </label>
-
-            <InitialStateEditor
-              key={selectedState.id}
-              state={selectedState.initialState}
-              onChange={(state) =>
-                setInitialState(selectedState.id, state)
-              }
-            />
-          </>
-        )}
-      </div>
+      {/* Kezdőállapot szerkesztése */}
+      <InitialStatePanel
+        states={simulator.states}
+        selectedState={selectedState}
+        onSelect={selectState}
+        onColorChange={setStateColor}
+        onInitialStateChange={setInitialState}
+      />
 
       {/* Alsó vezérlőpanel */}
       <div style={{
@@ -220,223 +170,97 @@ export default function App() {
         maxWidth: "calc(100vw - 48px)",
         color: "white",
       }}>
-
         {/* Állapotvektorok */}
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {simulator.states.map((tracked) => (
-            <div key={tracked.id} style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-            }}>
-              <button
-                onClick={() => {
-                  setIsPlaying(false);
-                  setSelectedStateId(tracked.id);
-                }}
-                style={{
-                  color: tracked.color,
-                  border: selectedState?.id === tracked.id
-                    ? `1px solid ${tracked.color}`
-                    : "1px solid transparent",
-                }}
-              >
-                {labels[tracked.id - 1]}
-              </button>
-              <button onClick={() => {
-                removeState(tracked.id);
+        <StateSelector
+          states={simulator.states}
+          selectedStateId={selectedState?.id}
+          canAdd={nextIndex !== -1}
+          onSelect={selectState}
+          onRemove={deleteState}
+          onAdd={() => {
+            if (nextIndex === -1) return;
 
-                if (selectedState?.id === tracked.id) {
-                  const remaining = simulator.states.find(
-                    (state) => state.id !== tracked.id,
-                  );
-                  setSelectedStateId(remaining?.id ?? 1);
-                }
-              }}>×</button>
-            </div>
-          ))}
+            stopPlayback();
+            addState(INITIAL_STATE_PRESETS[nextIndex]());
+          }}
+        />
 
-          <button
-            disabled={nextIndex === -1}
-            onClick={() => {
-              if (nextIndex !== -1) addState(initialStates[nextIndex]());
-            }}
-          >
-            + Állapot
-          </button>
-        </div>
-
-        {/* Módválasztó */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <label htmlFor="simulator-mode">Kapusor mód:</label>
-
-          <select
-            id="simulator-mode"
-            value={simulator.mode}
-            onChange={(e) => {
-              setIsPlaying(false);
-              setMode(e.target.value === "individual" ? "individual" : "shared");
-            }}
-          >
-            <option value="shared">Közös</option>
-            <option value="individual">Egyéni</option>
-          </select>
-
-          {simulator.mode === "individual" && selectedState && (
-            <span style={{ color: selectedState.color }}>
-              {labels[selectedState.id - 1]}
-            </span>
-          )}
-        </div>
+        {/* Közös / egyéni mód */}
+        <ModeSelector
+          mode={simulator.mode}
+          selectedState={selectedState}
+          onChange={(mode) => {
+            stopPlayback();
+            setMode(mode);
+          }}
+        />
 
         {/* Kvantumkapuk */}
-        <div style={{
-          display: "flex",
-          gap: 8,
-          flexWrap: "wrap",
-          justifyContent: "center",
-        }}>
-          {gates.map(({ label, matrix, parameter }) => (
-            <button
-              key={label}
-              disabled={target === null}
-              onClick={() => {
-                if (target !== null) addGate(target, label, matrix, parameter);
-              }}
-            >
-              + {label}
-            </button>
-          ))}
-        </div>
+        <GatePalette
+          disabled={target === null}
+          onAdd={(gate) => {
+            if (target === null) return;
+
+            stopPlayback();
+            addGate(
+              target,
+              gate.label,
+              gate.matrix,
+              gate.parameter,
+            );
+          }}
+        />
 
         {/* Kapusor szerkesztése */}
-        <div style={{
-          display: "flex",
-          gap: 8,
-          alignItems: "center",
-          flexWrap: "wrap",
-          justifyContent: "center",
-        }}>
-          {activeGates.map((gate, index) => (
-            <div key={gate.id} style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: 6,
-              borderRadius: 6,
-              background: "#1E293B",
-            }}>
-              <span style={{
-                color: index < activeStepIndex ? "#4ADE80" : "white",
-              }}>
-                {gate.label}
-              </span>
+        <GateSequenceEditor
+          gates={activeGates}
+          stepIndex={activeStepIndex}
+          disabled={target === null}
+          onRemove={(id) => {
+            if (target === null) return;
 
-              {gate.parameter && (
-                <input
-                  type="number"
-                  step="any"
-                  value={Number(
-                    (gate.parameter.angle * 180 / Math.PI).toFixed(4),
-                  )}
-                  onChange={(e) => {
-                    if (target === null || e.target.value.trim() === "") return;
-                    setIsPlaying(false);
-                    updateGateAngle(target, gate.id, Number(e.target.value));
-                  }}
-                  title="Szög fokban"
-                  style={{ width: 65 }}
-                />
-              )}
+            stopPlayback();
+            removeGate(target, id);
+          }}
+          onMove={(id, direction) => {
+            if (target === null) return;
 
-              <button
-                disabled={index === 0}
-                onClick={() => {
-                  if (target !== null) {
-                    setIsPlaying(false);
-                    moveGate(target, gate.id, -1);
-                  }
-                }}
-              >←</button>
+            stopPlayback();
+            moveGate(target, id, direction);
+          }}
+          onUpdateAngle={(id, degrees) => {
+            if (target === null) return;
 
-              <button
-                disabled={index === activeGates.length - 1}
-                onClick={() => {
-                  if (target !== null) {
-                    setIsPlaying(false);
-                    moveGate(target, gate.id, 1);
-                  }
-                }}
-              >→</button>
+            stopPlayback();
+            updateGateAngle(target, id, degrees);
+          }}
+          onClear={() => {
+            if (target === null) return;
 
-              <button onClick={() => {
-                if (target !== null) {
-                  setIsPlaying(false);
-                  removeGate(target, gate.id);
-                }
-              }}>×</button>
-            </div>
-          ))}
+            stopPlayback();
+            clearGates(target);
+          }}
+        />
 
-          <button
-            disabled={target === null || activeGates.length === 0}
-            onClick={() => {
-              if (target !== null) clearGates(target);
-            }}
-          >
-            Kapusor törlése
-          </button>
-        </div>
+        {/* Lejátszásvezérlés */}
+        <PlaybackControls
+          stepIndex={activeStepIndex}
+          totalSteps={activeGates.length}
+          isPlaying={isPlaying}
+          disabled={target === null}
+          onPrevious={() => {
+            if (target !== null) previousStep(target);
+          }}
+          onNext={() => {
+            if (target !== null) nextStep(target);
+          }}
+          onPlayPause={togglePlayback}
+          onReset={() => {
+            stopPlayback();
 
-        {/* Léptetés */}
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-        }}>
-          <button
-            disabled={isPlaying || target === null || activeStepIndex === 0}
-            onClick={() => {
-              if (target !== null) previousStep(target);
-            }}
-          >◀</button>
-
-          <span>{activeStepIndex} / {activeGates.length}</span>
-
-          <button
-            disabled={isPlaying || target === null || activeStepIndex >= activeGates.length}
-            onClick={() => {
-              if (target !== null) nextStep(target);
-            }}
-          >▶</button>
-
-          <button
-            disabled={
-              !isPlaying &&
-              (target === null || activeStepIndex >= activeGates.length)
-            }
-            onClick={() => {
-              if (isPlaying) {
-                setIsPlaying(false);
-              } else if (target !== null) {
-                nextStep(target);
-                setIsPlaying(true);
-              }
-            }}
-          >
-            {isPlaying ? "⏸ Pause" : "▶ Play"}
-          </button>
-
-          <button
-            disabled={target === null}
-            onClick={() => {
-              setIsPlaying(false);
-              if (target !== null) resetSteps(target);
-            }}
-          >
-            Reset
-          </button>
-        </div>
+            if (target !== null) resetSteps(target);
+          }}
+        />
       </div>
     </div>
   );

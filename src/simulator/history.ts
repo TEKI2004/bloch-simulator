@@ -2,8 +2,9 @@ import { Vector3 } from "three";
 import { apply } from "../quantum/Matrix2";
 import { toBlochVector } from "../quantum/bloch";
 import type { BlochVector } from "../quantum/bloch";
+import type { QubitState } from "../quantum/QubitState";
 import { getGateRotation } from "../quantum/gateRotation";
-import type { SimulatorState, TrackedState } from "./SimulatorState";
+import type { GateStep } from "./SimulatorState";
 
 export type HistorySegment = {
   gateId: string;
@@ -12,13 +13,9 @@ export type HistorySegment = {
 
 const SEGMENTS = 64;
 
-export function getHistorySegments(tracked: TrackedState, simulator: SimulatorState): HistorySegment[] {
-  const gates = simulator.mode === "shared" ? simulator.sharedGates : tracked.individualGates;
-
-  const stepIndex = simulator.mode === "shared" ? simulator.sharedStepIndex : tracked.individualStepIndex;
-
+export function getHistorySegments(initialState: QubitState, gates: GateStep[], stepIndex: number): HistorySegment[] {
   const history: HistorySegment[] = [];
-  let state = tracked.initialState;
+  let state = initialState;
 
   for (const gate of gates.slice(0, stepIndex)) {
     const rotation = getGateRotation(gate);

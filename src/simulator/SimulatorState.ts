@@ -33,6 +33,7 @@ export type SimulatorState = {
   states: TrackedState[];
   sharedGates: GateStep[];
   sharedStepIndex: number;
+  gateEditRevision: number;
 };
 
 export function getCurrentState(tracked: TrackedState, simulator: SimulatorState): QubitState {
@@ -57,5 +58,6 @@ export function createInitialSimulatorState(): SimulatorState {
     ],
     sharedGates: [],
     sharedStepIndex: 0,
+    gateEditRevision: 0,
   };
 }
