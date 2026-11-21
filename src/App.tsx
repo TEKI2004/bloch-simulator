@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 
+
 import BlochSphere from "./components/BlochSphere/BlochSphere";
 import ModeSelector from "./components/controls/Playback/ModeSelector";
 import InitialStatePanel from "./components/controls/State/InitialStatePanel";
@@ -11,6 +12,10 @@ import PlaybackControls from "./components/controls/Playback/PlaybackControls";
 import StateInfoPanel from "./components/controls/State/StateInfoPanel";
 import SimulatorLayout from "./components/layout/SimulatorLayout";
 import CircuitRows from "./components/controls/Circuit/CircuitRows";
+import BlochViewport from "./components/viewport/BlochViewport";
+
+import StateTabs from "./components/controls/State/StateTabs";
+import StateColorPicker from "./components/controls/State/StateColorPicker";
 
 
 import { useSimulator } from "./hooks/useSimulator";
@@ -156,44 +161,65 @@ export default function App() {
     <SimulatorLayout
       left={
         <InitialStatePanel
-          states={simulator.states}
           selectedState={selectedState}
-          onSelect={selectState}
-          onRemove={deleteState}
-          onColorChange={setStateColor}
           onInitialStateChange={setInitialState}
         />
       }
 
+
       center={
-        <Canvas
-          style={{ width: "100%", height: "100%" }}
-          camera={{
-            position: [3, 3, 2],
-            fov: 45,
-            up: [0, 0, 1],
-          }}
+        <BlochViewport
+          stateTabs={
+            <StateTabs
+              states={simulator.states}
+              selectedStateId={selectedState?.id}
+              onSelect={selectState}
+              onRemove={deleteState}
+            />
+          }
+          colorPicker={
+            selectedState ? (
+              <StateColorPicker
+                key={selectedState.id}
+                color={selectedState.color}
+                compact
+                onChange={(color) =>
+                  setStateColor(selectedState.id, color)
+                }
+              />
+            ) : null
+          }
         >
-          <color attach="background" args={["#101827"]} />
+          <Canvas
 
-          <BlochSphere
-            vectors={vectors}
-            selectedStateId={selectedState?.id}
-            mergeAnimationKey={mergeAnimationKey}
-            gateEditRevision={
-              simulator.gateEditRevision + simulator.instantJumpRevision
-            }
-            visualTransition={simulator.visualTransition}
-          />
+            style={{ width: "100%", height: "100%" }}
+            camera={{
+              position: [3, 3, 2],
+              fov: 45,
+              up: [0, 0, 1],
+            }}
+          >
+            <color attach="background" args={["#101827"]} />
 
-          <OrbitControls
-            target={[0, 0, 0]}
-            enablePan={false}
-            enableDamping
-            minDistance={2}
-            maxDistance={8}
-          />
-        </Canvas>
+            <BlochSphere
+              vectors={vectors}
+              selectedStateId={selectedState?.id}
+              mergeAnimationKey={mergeAnimationKey}
+              gateEditRevision={
+                simulator.gateEditRevision + simulator.instantJumpRevision
+              }
+              visualTransition={simulator.visualTransition}
+            />
+
+            <OrbitControls
+              target={[0, 0, 0]}
+              enablePan={false}
+              enableDamping
+              minDistance={2}
+              maxDistance={8}
+            />
+          </Canvas>
+        </BlochViewport>
       }
 
       right={

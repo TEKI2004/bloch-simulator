@@ -1,22 +1,14 @@
 import AngleSlider from "./controls/Inputs/AngleSlider";
+import ComplexAmplitudeEditor from "./controls/State/ComplexAmplitudeEditor";
 
 import { useState } from "react";
-import { Complex } from "../quantum/Complex";
 import { QubitState } from "../quantum/QubitState";
 import { toBlochVector } from "../quantum/bloch";
-import { formatNumber } from "../quantum/format";
 import { useRafCommit } from "../hooks/useRafCommit";
 
 type Props = {
     state: QubitState;
     onChange: (state: QubitState) => void;
-};
-
-type Amplitudes = {
-    alphaRe: string;
-    alphaIm: string;
-    betaRe: string;
-    betaIm: string;
 };
 
 const toRadians = (degrees: number) => degrees * Math.PI / 180;
@@ -40,19 +32,8 @@ function getAngles(state: QubitState): [number, number] {
     ];
 }
 
-function getAmplitudes(state: QubitState): Amplitudes {
-    return {
-        alphaRe: String(formatNumber(state.alpha.re)),
-        alphaIm: String(formatNumber(state.alpha.im)),
-        betaRe: String(formatNumber(state.beta.re)),
-        betaIm: String(formatNumber(state.beta.im)),
-    };
-}
-
 export default function InitialStateEditor({ state, onChange }: Props) {
     const [angles, setAngles] = useState(() => getAngles(state));
-    const [amplitudes, setAmplitudes] = useState(() => getAmplitudes(state));
-    const [error, setError] = useState("");
     const {
         schedule: scheduleStateUpdate,
         flush: flushStateUpdate,
@@ -83,8 +64,6 @@ export default function InitialStateEditor({ state, onChange }: Props) {
 
         // A szerkesztő azonnal követi a változást.
         setAngles([theta, phi]);
-        setAmplitudes(getAmplitudes(next));
-        setError("");
 
         // Csak a teljes szimulátor frissítését korlátozzuk.
         if (immediate) {
@@ -92,39 +71,6 @@ export default function InitialStateEditor({ state, onChange }: Props) {
         } else {
             scheduleStateUpdate(next);
         }
-    }
-
-    function applyAmplitudes() {
-        const values = Object.values(amplitudes);
-
-        if (values.some((value) => value.trim() === "")) {
-            setError("Minden amplitúdókomponenst meg kell adni.");
-            return;
-        }
-
-        const [ar, ai, br, bi] = values.map(Number);
-
-        if (![ar, ai, br, bi].every(Number.isFinite)) {
-            setError("Érvénytelen amplitúdó.");
-            return;
-        }
-
-        const normSquared = ar * ar + ai * ai + br * br + bi * bi;
-
-        if (!Number.isFinite(normSquared) || normSquared === 0) {
-            setError("Az állapot nem lehet nullvektor vagy nem véges.");
-            return;
-        }
-
-        const next = new QubitState(
-            new Complex(ar, ai),
-            new Complex(br, bi),
-        ).normalized();
-
-        setAngles(getAngles(next));
-        setAmplitudes(getAmplitudes(next));
-        setError("");
-        onChange(next);
     }
 
     return (
@@ -176,34 +122,14 @@ export default function InitialStateEditor({ state, onChange }: Props) {
                 />
             </div>
 
-            <div style={{ display: "grid", gap: 8 }}>
-                <strong>Komplex amplitúdók</strong>
+            <ComplexAmplitudeEditor
+                state={state}
+                onCommit={(next) => {
+                    setAngles(getAngles(next));
+                    commitStateNow(next);
+                }}
+            />
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                    {([
-                        ["alphaRe", "Re(α)"],
-                        ["alphaIm", "Im(α)"],
-                        ["betaRe", "Re(β)"],
-                        ["betaIm", "Im(β)"],
-                    ] as const).map(([key, label]) => (
-                        <label key={key}>
-                            {label}
-                            <input type="number" step="any" value={amplitudes[key]}
-                                onChange={(e) => setAmplitudes((current) => ({
-                                    ...current,
-                                    [key]: e.target.value,
-                                }))}
-                                style={{ width: "100%" }} />
-                        </label>
-                    ))}
-                </div>
-
-                <button onClick={applyAmplitudes}>
-                    Alkalmazás (normalizálva)
-                </button>
-
-                {error && <span role="alert" style={{ color: "#f87171" }}>{error}</span>}
-            </div>
         </div>
     );
 }

@@ -82,3 +82,96 @@
     transition: none;
   }
 }
+
+/* Canvas HUD: kompakt állapotfülek */
+
+.bloch-viewport-tabs .state-tabs {
+  margin: 0;
+  gap: 6px;
+}
+
+.bloch-viewport-tabs .state-tab {
+  min-height: 38px;
+  border-radius: 8px;
+}
+
+.sim-layout .bloch-viewport-tabs .state-tab-select {
+  height: 36px;
+  padding: 0 6px;
+  font-size: 17px;
+}
+
+/* A törlésgomb helye mindig megmarad,
+   így hoverkor nem mozdul el a felirat. */
+
+.sim-layout .state-tab-remove {
+  opacity: 0;
+  pointer-events: none;
+
+  width: 24px;
+  height: 28px;
+
+  transition:
+    opacity 120ms ease,
+    color 120ms ease,
+    background 120ms ease;
+}
+
+/* Egérrel és billentyűzettel is elérhető */
+
+.state-tab:hover .state-tab-remove,
+.state-tab:focus-within .state-tab-remove {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Érintőképernyőn nincs valódi hover */
+
+@media (hover: none) {
+  .sim-layout .state-tab-remove {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* Kompakt, tartalomhoz igazodó állapotfülek */
+
+.bloch-viewport-tabs .state-tabs {
+  display: inline-grid;
+  grid-template-columns: repeat(2, max-content);
+
+  width: max-content;
+  max-width: 100%;
+  gap: 6px;
+}
+
+.bloch-viewport-tabs .state-tab {
+  width: max-content;
+  min-width: 0;
+  min-height: 38px;
+}
+
+.sim-layout .bloch-viewport-tabs .state-tab-select {
+  flex: 0 0 auto;
+  width: auto;
+  height: 36px;
+  padding: 0 10px;
+
+  white-space: nowrap;
+  font-size: 17px;
+}
+
+.sim-layout .bloch-viewport-tabs .state-tab-remove {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 28px;
+  margin-right: 4px;
+}
+
+/* Keskeny Canvas esetén függőleges állapotválasztó */
+
+@container bloch-viewport (max-width: 640px) {
+  .bloch-viewport .bloch-viewport-tabs .state-tabs {
+    grid-template-columns: max-content;
+  }
+}

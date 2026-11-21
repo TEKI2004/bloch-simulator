@@ -15,6 +15,7 @@ import "./StateColorPicker.css";
 type Props = {
     color: string;
     onChange: (color: string) => void;
+    compact?: boolean;
 };
 
 const PRESET_COLORS = [
@@ -36,6 +37,7 @@ const POPOVER_GAP = 8;
 export default function StateColorPicker({
     color,
     onChange,
+    compact = false,
 }: Props) {
     const [open, setOpen] = useState(false);
     const [previewColor, setPreviewColor] = useState(color);
@@ -263,9 +265,11 @@ export default function StateColorPicker({
     return (
         <div className="state-color-picker" ref={rootRef}>
             <div className="state-color-header">
-                <span className="state-color-label">
-                    Vektor színe
-                </span>
+                {!compact && (
+                    <span className="state-color-label">
+                        Vektor színe
+                    </span>
+                )}
 
                 <button
                     ref={triggerRef}

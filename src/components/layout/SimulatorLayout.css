@@ -244,3 +244,13 @@
 .sim-layout .sim-gate-palette button:active {
   cursor: grabbing;
 }
+
+.sim-side-panel.initial-state-panel {
+  padding-top: 14px;
+}
+
+.initial-state-panel > h3 {
+  margin: 0 0 18px;
+  font-size: 16px;
+  font-weight: 600;
+}
