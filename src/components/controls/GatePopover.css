@@ -1,0 +1,101 @@
+.gate-popover {
+  position: fixed;
+  z-index: 1000;
+  box-sizing: border-box;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 2px;
+
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 5px;
+  box-shadow: 0 4px 12px #0005;
+}
+
+.gate-popover-input {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  height: 20px;
+  padding: 0 2px;
+
+  background: #101827;
+  color: #e2e8f0;
+  border: 1px solid #475569;
+  border-radius: 3px;
+
+  font-family: "Inter", sans-serif;
+  font-size: 11px;
+  text-align: center;
+  outline: none;
+
+  /* Firefox számválasztó nyilak eltüntetése */
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+/* Chrome / Edge számválasztó nyilak eltüntetése */
+.gate-popover-input::-webkit-inner-spin-button,
+.gate-popover-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.gate-popover-input:focus {
+  border-color: #22d3ee;
+}
+
+.gate-popover-delete {
+  flex: 0 0 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 15px;
+  height: 20px;
+  padding: 0;
+
+  background: transparent;
+  color: #f87171;
+  border: none;
+  border-radius: 3px;
+
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.gate-popover-delete:hover {
+  background: #ef444422;
+  color: #fca5a5;
+}
+
+/* Normál kapu: csak kis négyzet a jobb felső sarokban */
+.gate-popover--delete-only {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  gap: 0;
+  border-radius: 4px;
+}
+
+.gate-popover--delete-only .gate-popover-delete {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  font-size: 15px;
+}
+
+/* Paraméteres kapu: kompakt mező */
+.gate-popover-input {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  height: 20px;
+  padding: 0 2px;
+  text-align: center;
+  font-size: 11px;
+}

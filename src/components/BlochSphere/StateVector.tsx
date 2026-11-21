@@ -26,6 +26,7 @@ type Props = {
     ownLabel: string;
     keepMergedDuringAnimation?: boolean;
     gateEditRevision: number;
+    gateMoveRevision: number;
 };
 
 export default function StateVector({
@@ -42,6 +43,7 @@ export default function StateVector({
     ownLabel,
     keepMergedDuringAnimation = false,
     gateEditRevision,
+    gateMoveRevision,
 }: Props) {
     // Előző szimulációs állapot
     const lastGates = useRef(gates);
@@ -53,15 +55,17 @@ export default function StateVector({
     const lastMergedHidden = useRef(mergedHidden);
     const lastMergeAnimationKey = useRef(mergeAnimationKey);
     const lastGateEditRevision = useRef(gateEditRevision);
+    const lastGateMoveRevision = useRef(gateMoveRevision);
 
     // Forgásanimáció
     const {
         groupRef,
-        initialRotation,
         start,
         snap,
         isRunning,
         consumeFinished,
+        waitForMerge,
+        startShortest,
     } = useVectorAnimation(direction, progressRef);
 
     // Feliratok és láthatóság
@@ -81,6 +85,12 @@ export default function StateVector({
 
         const editChanged =
             lastGateEditRevision.current !== gateEditRevision;
+        const moveChanged =
+            lastGateMoveRevision.current !== gateMoveRevision;
+
+        lastGateMoveRevision.current = gateMoveRevision;
+
+        const moveEdit = editChanged && moveChanged;
 
         lastGateEditRevision.current = gateEditRevision;
 
@@ -106,7 +116,7 @@ export default function StateVector({
         const newlyVisible = !mergedHidden && wasHidden;
 
         const mergeTransition =
-            mergeStepChanged &&
+            (mergeStepChanged || moveEdit) &&
             (
                 newlyHidden ||
                 (
@@ -141,23 +151,41 @@ export default function StateVector({
             mergeTransition;
 
         // Mozgás vezérlése
-        if (editChanged) {
-            // Kapusor szerkesztése: minden vektor azonnal frissül.
+
+        if (moveEdit && directionChanged) {
+            // Kapu átrendezése: legrövidebb gömbi ív.
+            startShortest(next);
+
+        } else if (moveEdit && mergeTransition) {
+            // Helyben álló vektor, amelyhez másik érkezik.
+            waitForMerge(next);
+
+        } else if (editChanged && !moveEdit) {
+            // Egyéb szerkesztés: azonnali frissítés.
             snap(next);
+
         } else if (animate) {
-            start(previousDirection, next, rotation, difference);
-        } else if (directionChanged || gatesChanged) {
+            if (!shouldAnimate && !directionChanged) {
+                waitForMerge(next);
+            } else {
+                start(previousDirection, next, rotation, difference);
+            }
+
+        } else if (directionChanged || gatesChanged || newlyVisible) {
             snap(next);
         }
+
 
         // Megjelenítés vezérlése
         updateVisibility({
             label,
             ownLabel,
             mergedHidden,
-            isAnimating: editChanged ? false : isRunning(),
+            isAnimating:
+                moveEdit ? isRunning() : editChanged ? false : isRunning(),
             keepMergedDuringAnimation,
-            shouldAnimate,
+            shouldAnimate:
+                shouldAnimate || (moveEdit && directionChanged),
             directionChanged,
             newlyVisible,
         });
@@ -177,12 +205,14 @@ export default function StateVector({
         isRunning,
         getCurrentLabel,
         updateVisibility,
+        waitForMerge,
+        gateMoveRevision,
+        startShortest,
     ]);
 
     return (
         <group
             ref={groupRef}
-            quaternion={initialRotation}
             visible={!displayHidden}
         >
             <Line

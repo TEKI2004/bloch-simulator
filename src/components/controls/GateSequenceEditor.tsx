@@ -26,8 +26,10 @@ export default function GateSequenceEditor({
                 display: "flex",
                 gap: 8,
                 alignItems: "center",
-                flexWrap: "wrap",
-                justifyContent: "center",
+                flexWrap: "nowrap",
+                justifyContent: "flex-start",
+                width: "max-content",
+                minWidth: "100%",
             }}
         >
             {gates.map((gate, index) => (

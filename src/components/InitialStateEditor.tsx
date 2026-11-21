@@ -20,14 +20,24 @@ type Amplitudes = {
 const toRadians = (degrees: number) => degrees * Math.PI / 180;
 const toDegrees = (radians: number) => radians * 180 / Math.PI;
 
+
 function getAngles(state: QubitState): [number, number] {
     const [x, y, z] = toBlochVector(state);
 
+    const theta = toDegrees(
+        Math.acos(Math.max(-1, Math.min(1, z))),
+    );
+
+    const phi = (
+        toDegrees(Math.atan2(y, x)) + 360
+    ) % 360;
+
     return [
-        toDegrees(Math.acos(Math.max(-1, Math.min(1, z)))),
-        (toDegrees(Math.atan2(y, x)) + 360) % 360,
+        Number(theta.toFixed(4)),
+        Number(phi.toFixed(4)),
     ];
 }
+
 
 function getAmplitudes(state: QubitState): Amplitudes {
     return {

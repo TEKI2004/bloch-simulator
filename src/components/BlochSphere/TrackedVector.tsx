@@ -16,6 +16,7 @@ type Props = {
     mergeAnimationKey: string;
     gateEditRevision: number;
     keepMergedDuringAnimation: boolean;
+    gateMoveRevision: number;
 };
 
 export default function TrackedVector({
@@ -27,6 +28,7 @@ export default function TrackedVector({
     mergeAnimationKey,
     gateEditRevision,
     keepMergedDuringAnimation,
+    gateMoveRevision,
 }: Props) {
     const progressRef = useRef(1);
 
@@ -64,6 +66,7 @@ export default function TrackedVector({
                 ownLabel={vector.label}
                 keepMergedDuringAnimation={keepMergedDuringAnimation}
                 gateEditRevision={gateEditRevision}
+                gateMoveRevision={gateMoveRevision}
             />
         </>
     );

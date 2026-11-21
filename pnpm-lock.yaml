@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@fontsource/inter':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@react-three/drei':
         specifier: ^10.7.9
         version: 10.7.9(@react-three/fiber@9.7.0(@types/react@19.3.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.187.0))(@types/react@19.3.0)(@types/three@0.187.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.187.0)
@@ -66,6 +69,9 @@ packages:
 
   '@emnapi/wasi-threads@2.2.0':
     resolution: {integrity: sha512-JP7OYH38Q7+pyTAe14raZHLQIK7BDKbdwji+Xi3pcd/6QkJYQH3SX4wu6EplGrGJWRepoNzedfm0G3B9Z4e9Rw==}
+
+  '@fontsource/inter@5.3.0':
+    resolution: {integrity: sha512-RofMylZmjlJEfELXeNHFWBRcSs75rGU/6bV2S2jfnvv/3rPXPGe0LgUJTklcHZ9lM4OZmAVFhcJPnACfb91A3g==}
 
   '@mediapipe/tasks-vision@0.10.17':
     resolution: {integrity: sha512-CZWV/q6TTe8ta61cZXjfnnHsfWIdFhms03M9T7Cnd5y2mdpylJM0rF1qRq+wsQVRMLz1OYPVEBU9ph2Bx8cxrg==}
@@ -955,6 +961,8 @@ snapshots:
     dependencies:
       tslib: 2.9.1
     optional: true
+
+  '@fontsource/inter@5.3.0': {}
 
   '@mediapipe/tasks-vision@0.10.17': {}
 

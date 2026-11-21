@@ -20,7 +20,16 @@ export default function GatePalette({ disabled, onAdd }: Props) {
             {GATE_OPTIONS.map((gate) => (
                 <button
                     key={gate.label}
+                    data-gate-label={gate.label}
                     disabled={disabled}
+                    draggable={!disabled}
+                    onDragStart={(event) => {
+                        event.dataTransfer.setData(
+                            "application/x-bloch-gate",
+                            gate.label,
+                        );
+                        event.dataTransfer.effectAllowed = "move";
+                    }}
                     onClick={() => onAdd(gate)}
                 >
                     + {gate.label}

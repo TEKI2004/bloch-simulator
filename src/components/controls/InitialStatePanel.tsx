@@ -54,16 +54,7 @@ export default function InitialStatePanel({
         };
     }, []);
     return (
-        <div style={{
-            position: "absolute",
-            top: 24,
-            left: 24,
-            width: 250,
-            padding: 16,
-            background: "#1E293B",
-            color: "white",
-            borderRadius: 12,
-        }}>
+        <aside className="sim-side-panel">
             <h3>Kezdőállapot</h3>
 
             {selectedState && (
@@ -106,6 +97,6 @@ export default function InitialStatePanel({
                     />
                 </>
             )}
-        </div>
+        </aside>
     );
 }

@@ -4,6 +4,7 @@ import type {
     TrackedState,
 } from "../../simulator/SimulatorState";
 import { STATE_LABELS } from "../../simulator/statePresets";
+import "./ModeSelector.css";
 
 type Props = {
     mode: SimulatorMode;
@@ -16,29 +17,34 @@ export default function ModeSelector({
     selectedState,
     onChange,
 }: Props) {
+    const individual = mode === "individual";
+
     return (
-        <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-        }}>
-            <label htmlFor="simulator-mode">
-                Kapusor mód:
-            </label>
+        <div className="qc-mode-selector">
+            <span className={!individual ? "qc-mode-active" : ""}>
+                Közös
+            </span>
 
-            <select
-                id="simulator-mode"
-                value={mode}
-                onChange={(e) =>
-                    onChange(e.target.value as SimulatorMode)
+            <button
+                type="button"
+                className="qc-mode-switch"
+                role="switch"
+                aria-label="Egyéni kapusor mód"
+                aria-checked={individual}
+                onClick={() =>
+                    onChange(individual ? "shared" : "individual")
                 }
-            >
-                <option value="shared">Közös</option>
-                <option value="individual">Egyéni</option>
-            </select>
+            />
 
-            {mode === "individual" && selectedState && (
-                <span style={{ color: selectedState.color }}>
+            <span className={individual ? "qc-mode-active" : ""}>
+                Egyéni
+            </span>
+
+            {individual && selectedState && (
+                <span
+                    className="qc-mode-state"
+                    style={{ color: selectedState.color }}
+                >
                     {STATE_LABELS[selectedState.id - 1]}
                 </span>
             )}

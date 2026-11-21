@@ -14,7 +14,12 @@ type GateSequence = {
 
 const gateFactories: Record<GateParameter["kind"], (angle: number) => Matrix2> = { P, Rx, Ry, Rz };
 
-function updateGateSequence(current: SimulatorState, target: GateTarget, update: (sequence: GateSequence) => GateSequence): SimulatorState {
+function updateGateSequence(
+  current: SimulatorState,
+  target: GateTarget,
+  update: (sequence: GateSequence) => GateSequence,
+  kind: "edit" | "move" = "edit",
+): SimulatorState {
   if (target === "shared") {
     const previous: GateSequence = {
       gates: current.sharedGates,
@@ -33,6 +38,7 @@ function updateGateSequence(current: SimulatorState, target: GateTarget, update:
       sharedGates: next.gates,
       sharedStepIndex: next.stepIndex,
       gateEditRevision: current.gateEditRevision + (gatesChanged ? 1 : 0),
+      gateMoveRevision: current.gateMoveRevision + (gatesChanged && kind === "move" ? 1 : 0),
     };
   }
 
@@ -54,6 +60,7 @@ function updateGateSequence(current: SimulatorState, target: GateTarget, update:
   return {
     ...current,
     gateEditRevision: current.gateEditRevision + (gatesChanged ? 1 : 0),
+    gateMoveRevision: current.gateMoveRevision + (gatesChanged && kind === "move" ? 1 : 0),
     states: current.states.map((state) =>
       state.id === target
         ? {
@@ -157,21 +164,26 @@ export function useSimulator() {
 
   function moveGate(target: GateTarget, id: string, direction: -1 | 1) {
     setSimulator((current) =>
-      updateGateSequence(current, target, (sequence) => {
-        const index = sequence.gates.findIndex((gate) => gate.id === id);
+      updateGateSequence(
+        current,
+        target,
+        (sequence) => {
+          const index = sequence.gates.findIndex((gate) => gate.id === id);
 
-        const destination = index + direction;
+          const destination = index + direction;
 
-        if (index === -1 || destination < 0 || destination >= sequence.gates.length) {
-          return sequence;
-        }
+          if (index === -1 || destination < 0 || destination >= sequence.gates.length) {
+            return sequence;
+          }
 
-        const gates = [...sequence.gates];
-        const [gate] = gates.splice(index, 1);
-        gates.splice(destination, 0, gate);
+          const gates = [...sequence.gates];
+          const [gate] = gates.splice(index, 1);
+          gates.splice(destination, 0, gate);
 
-        return { ...sequence, gates };
-      }),
+          return { ...sequence, gates };
+        },
+        "move",
+      ),
     );
   }
 
@@ -218,6 +230,106 @@ export function useSimulator() {
     );
   }
 
+  function insertGate(target: GateTarget, index: number, label: string, matrix: Matrix2, parameter?: GateParameter) {
+    const id = `gate-${nextGateId.current++}`;
+
+    setSimulator((current) =>
+      updateGateSequence(current, target, ({ gates, stepIndex }) => {
+        const insertIndex = Math.max(0, Math.min(index, gates.length));
+        const updated = [...gates];
+
+        updated.splice(insertIndex, 0, {
+          id,
+          label,
+          matrix,
+          parameter,
+        });
+
+        return {
+          gates: updated,
+          stepIndex: stepIndex + (insertIndex < stepIndex ? 1 : 0),
+        };
+      }),
+    );
+  }
+
+  function moveGateTo(target: GateTarget, id: string, insertIndex: number) {
+    setSimulator((current) =>
+      updateGateSequence(
+        current,
+        target,
+        (sequence) => {
+          const gates = [...sequence.gates];
+          const oldIndex = gates.findIndex((gate) => gate.id === id);
+
+          if (oldIndex === -1) return sequence;
+
+          const boundedIndex = Math.max(0, Math.min(insertIndex, gates.length));
+
+          const newIndex = boundedIndex > oldIndex ? boundedIndex - 1 : boundedIndex;
+
+          if (oldIndex === newIndex) return sequence;
+
+          const [gate] = gates.splice(oldIndex, 1);
+          gates.splice(newIndex, 0, gate);
+
+          return { ...sequence, gates };
+        },
+        "move",
+      ),
+    );
+  }
+
+  function moveGateBetweenRows(sourceId: number, destinationId: number, gateId: string, insertIndex: number) {
+    if (sourceId === destinationId) {
+      moveGateTo(sourceId, gateId, insertIndex);
+      return;
+    }
+
+    setSimulator((current) => {
+      const source = current.states.find((s) => s.id === sourceId);
+      const destination = current.states.find((s) => s.id === destinationId);
+
+      if (!source || !destination) return current;
+
+      const oldIndex = source.individualGates.findIndex((gate) => gate.id === gateId);
+
+      if (oldIndex === -1) return current;
+
+      const gate = source.individualGates[oldIndex];
+
+      const index = Math.max(0, Math.min(insertIndex, destination.individualGates.length));
+
+      return {
+        ...current,
+        gateEditRevision: current.gateEditRevision + 1,
+        gateMoveRevision: current.gateMoveRevision + 1,
+        states: current.states.map((state) => {
+          if (state.id === sourceId) {
+            return {
+              ...state,
+              individualGates: state.individualGates.filter((g) => g.id !== gateId),
+              individualStepIndex: state.individualStepIndex - (oldIndex < state.individualStepIndex ? 1 : 0),
+            };
+          }
+
+          if (state.id === destinationId) {
+            const gates = [...state.individualGates];
+            gates.splice(index, 0, gate);
+
+            return {
+              ...state,
+              individualGates: gates,
+              individualStepIndex: state.individualStepIndex + (index < state.individualStepIndex ? 1 : 0),
+            };
+          }
+
+          return state;
+        }),
+      };
+    });
+  }
+
   function changeStep(target: GateTarget, change: (step: number) => number) {
     setSimulator((current) =>
       updateGateSequence(current, target, (sequence) => ({
@@ -239,6 +351,17 @@ export function useSimulator() {
     changeStep(target, () => 0);
   }
 
+  function jumpToStep(target: GateTarget, index: number) {
+    if (!Number.isFinite(index)) return;
+
+    setSimulator((current) =>
+      updateGateSequence(current, target, (sequence) => ({
+        ...sequence,
+        stepIndex: Math.max(0, Math.min(sequence.gates.length, Math.trunc(index))),
+      })),
+    );
+  }
+
   return {
     simulator,
     setMode,
@@ -251,8 +374,12 @@ export function useSimulator() {
     moveGate,
     updateGateAngle,
     clearGates,
+    insertGate,
+    moveGateTo,
+    moveGateBetweenRows,
     nextStep,
     previousStep,
     resetSteps,
+    jumpToStep,
   };
 }

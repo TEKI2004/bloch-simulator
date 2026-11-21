@@ -19,6 +19,7 @@ type Props = {
   selectedStateId?: number;
   mergeAnimationKey: string;
   gateEditRevision: number;
+  gateMoveRevision: number;
 };
 
 export default function BlochSphere({
@@ -26,6 +27,7 @@ export default function BlochSphere({
   selectedStateId,
   mergeAnimationKey,
   gateEditRevision,
+  gateMoveRevision
 }: Props) {
   const preparedVectors = prepareVectors(vectors, selectedStateId);
 
@@ -71,6 +73,7 @@ export default function BlochSphere({
             mergeAnimationKey={mergeAnimationKey}
             gateEditRevision={gateEditRevision}
             keepMergedDuringAnimation={keepMergedDuringAnimation}
+            gateMoveRevision={gateMoveRevision}
           />
         );
       })}

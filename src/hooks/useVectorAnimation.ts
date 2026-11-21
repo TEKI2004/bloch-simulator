@@ -1,10 +1,11 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Group, Quaternion, Vector3 } from "three";
 import type { BlochVector } from "../quantum/bloch";
 import type { GateRotation } from "../quantum/gateRotation";
 
 const UP = new Vector3(0, 1, 0);
+const IDENTITY = new Quaternion();
 const DURATION = 0.45;
 
 type ProgressRef = { current: number };
@@ -14,12 +15,20 @@ export function useVectorAnimation(initialDirection: BlochVector, progressRef: P
 
   const groupRef = useRef<Group>(null);
 
+  useLayoutEffect(() => {
+    groupRef.current?.quaternion.copy(initialRotation);
+  }, [initialRotation]);
+
   const from = useRef(initialRotation.clone());
   const to = useRef(initialRotation.clone());
   const elapsed = useRef(DURATION);
 
+  const holdOnly = useRef(false);
+
   // Kvantumkapu forgáspályája
   const gatePath = useRef(false);
+  const shortestPath = useRef(false);
+  const shortestRotation = useRef(new Quaternion());
   const axis = useRef(new Vector3(0, 0, 1));
   const angle = useRef(0);
   const startDirection = useRef(new Vector3(...initialDirection).normalize());
@@ -33,6 +42,8 @@ export function useVectorAnimation(initialDirection: BlochVector, progressRef: P
   // Animáció elindítása
   const start = useCallback(
     (previousDirection: Vector3, nextDirection: Vector3, rotation: GateRotation | null, stepDirection: number) => {
+      shortestPath.current = false;
+      holdOnly.current = false;
       const previousFinished = elapsed.current >= DURATION;
 
       from.current.copy(groupRef.current?.quaternion ?? to.current);
@@ -56,9 +67,35 @@ export function useVectorAnimation(initialDirection: BlochVector, progressRef: P
     [progressRef],
   );
 
+  const startShortest = useCallback(
+    (nextDirection: Vector3) => {
+      holdOnly.current = false;
+
+      // A ténylegesen kirajzolt pozícióból indulunk.
+      const currentRotation = groupRef.current?.quaternion ?? to.current;
+
+      startDirection.current.copy(UP).applyQuaternion(currentRotation).normalize();
+
+      shortestRotation.current.setFromUnitVectors(startDirection.current, nextDirection.clone().normalize());
+
+      from.current.copy(currentRotation);
+      to.current.setFromUnitVectors(UP, nextDirection);
+
+      gatePath.current = false;
+      shortestPath.current = true;
+
+      elapsed.current = 0;
+      progressRef.current = 0;
+      justFinished.current = false;
+    },
+    [progressRef],
+  );
+
   // Azonnali pozícióváltás animáció nélkül
   const snap = useCallback(
     (nextDirection: Vector3) => {
+      shortestPath.current = false;
+      holdOnly.current = false;
       to.current.setFromUnitVectors(UP, nextDirection);
 
       groupRef.current?.quaternion.copy(to.current);
@@ -71,15 +108,51 @@ export function useVectorAnimation(initialDirection: BlochVector, progressRef: P
     [progressRef],
   );
 
+  const waitForMerge = useCallback((targetDirection: Vector3) => {
+    shortestPath.current = false;
+    // A matematikailag helyes célirány beállítása.
+    to.current.setFromUnitVectors(UP, targetDirection.clone().normalize());
+
+    from.current.copy(to.current);
+    groupRef.current?.quaternion.copy(to.current);
+
+    // Csak várakozunk, nem forgatunk.
+    gatePath.current = false;
+    holdOnly.current = true;
+
+    elapsed.current = 0;
+    justFinished.current = false;
+
+    // progressRef változatlan marad.
+  }, []);
+
   const isRunning = useCallback(() => elapsed.current < DURATION, []);
 
   // Forgatás minden képkockán
+
   useFrame((_, delta) => {
-    if (!groupRef.current || elapsed.current >= DURATION) {
+    const group = groupRef.current;
+    if (!group) return;
+
+    if (elapsed.current >= DURATION) {
+      const difference = 1 - Math.abs(group.quaternion.dot(to.current));
+
+      if (difference > 1e-8) {
+        group.quaternion.copy(to.current);
+      }
+
       return;
     }
 
     elapsed.current = Math.min(DURATION, elapsed.current + delta);
+
+    if (holdOnly.current) {
+      if (elapsed.current >= DURATION) {
+        holdOnly.current = false;
+        justFinished.current = true;
+      }
+      return;
+    }
 
     const t = elapsed.current / DURATION;
     const eased = t * t * (3 - 2 * t);
@@ -87,19 +160,23 @@ export function useVectorAnimation(initialDirection: BlochVector, progressRef: P
     progressRef.current = eased;
 
     if (gatePath.current) {
-      // Tényleges kvantumkapu-forgás
       tempQuaternion.current.setFromAxisAngle(axis.current, angle.current * eased);
 
       tempDirection.current.copy(startDirection.current).applyQuaternion(tempQuaternion.current).normalize();
 
-      groupRef.current.quaternion.setFromUnitVectors(UP, tempDirection.current);
+      group.quaternion.setFromUnitVectors(UP, tempDirection.current);
+    } else if (shortestPath.current) {
+      tempQuaternion.current.slerpQuaternions(IDENTITY, shortestRotation.current, eased);
+
+      tempDirection.current.copy(startDirection.current).applyQuaternion(tempQuaternion.current).normalize();
+
+      group.quaternion.setFromUnitVectors(UP, tempDirection.current);
     } else {
-      // Tartalék interpoláció megszakított animációnál
-      groupRef.current.quaternion.slerpQuaternions(from.current, to.current, eased);
+      group.quaternion.slerpQuaternions(from.current, to.current, eased);
     }
 
     if (elapsed.current >= DURATION) {
-      groupRef.current.quaternion.copy(to.current);
+      group.quaternion.copy(to.current);
       justFinished.current = true;
     }
   });
@@ -118,5 +195,7 @@ export function useVectorAnimation(initialDirection: BlochVector, progressRef: P
     snap,
     isRunning,
     consumeFinished,
+    waitForMerge,
+    startShortest,
   };
 }

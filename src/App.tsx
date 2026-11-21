@@ -8,8 +8,10 @@ import StateSelector from "./components/controls/StateSelector";
 import ModeSelector from "./components/controls/ModeSelector";
 import InitialStatePanel from "./components/controls/InitialStatePanel";
 import GatePalette from "./components/controls/GatePalette";
-import GateSequenceEditor from "./components/controls/GateSequenceEditor";
 import PlaybackControls from "./components/controls/PlaybackControls";
+import StateInfoPanel from "./components/controls/StateInfoPanel";
+import SimulatorLayout from "./components/layout/SimulatorLayout";
+import CircuitRows from "./components/controls/CircuitRows";
 
 import { useSimulator } from "./hooks/useSimulator";
 import { usePlayback } from "./hooks/usePlayback";
@@ -29,12 +31,15 @@ export default function App() {
     setStateColor,
     addGate,
     removeGate,
-    moveGate,
     updateGateAngle,
     clearGates,
+    insertGate,
+    moveGateTo,
+    moveGateBetweenRows,
     nextStep,
     previousStep,
     resetSteps,
+    jumpToStep,
   } = useSimulator();
 
   const [selectedStateId, setSelectedStateId] = useState(1);
@@ -43,6 +48,10 @@ export default function App() {
   const selectedState =
     simulator.states.find((s) => s.id === selectedStateId)
     ?? simulator.states[0];
+
+  const selectedCurrentState = selectedState
+    ? getCurrentState(selectedState, simulator)
+    : null;
 
   // Aktív kapusor
   const target = simulator.mode === "shared"
@@ -118,150 +127,175 @@ export default function App() {
     }
   }
 
+
   return (
-    <div style={{
-      width: "100%",
-      height: "100%",
-      position: "relative",
-    }}>
-      {/* 3D jelenet */}
-      <Canvas camera={{
-        position: [3, 3, 2],
-        fov: 45,
-        up: [0, 0, 1],
-      }}>
-        <color attach="background" args={["#101827"]} />
-
-        <BlochSphere
-          vectors={vectors}
-          selectedStateId={selectedState?.id}
-          mergeAnimationKey={mergeAnimationKey}
-          gateEditRevision={simulator.gateEditRevision}
-        />
-
-        <OrbitControls
-          target={[0, 0, 0]}
-          enablePan={false}
-          enableDamping
-          minDistance={2}
-          maxDistance={8}
-        />
-      </Canvas>
-
-      {/* Kezdőállapot szerkesztése */}
-      <InitialStatePanel
-        states={simulator.states}
-        selectedState={selectedState}
-        onSelect={selectState}
-        onColorChange={setStateColor}
-        onInitialStateChange={setInitialState}
-      />
-
-      {/* Alsó vezérlőpanel */}
-      <div style={{
-        position: "absolute",
-        bottom: 24,
-        left: "50%",
-        transform: "translateX(-50%)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 12,
-        maxWidth: "calc(100vw - 48px)",
-        color: "white",
-      }}>
-        {/* Állapotvektorok */}
-        <StateSelector
+    <SimulatorLayout
+      left={
+        <InitialStatePanel
           states={simulator.states}
-          selectedStateId={selectedState?.id}
-          canAdd={nextIndex !== -1}
-          onSelect={selectState}
-          onRemove={deleteState}
-          onAdd={() => {
-            if (nextIndex === -1) return;
-
-            stopPlayback();
-            addState(INITIAL_STATE_PRESETS[nextIndex]());
-          }}
-        />
-
-        {/* Közös / egyéni mód */}
-        <ModeSelector
-          mode={simulator.mode}
           selectedState={selectedState}
-          onChange={(mode) => {
-            stopPlayback();
-            setMode(mode);
-          }}
+          onSelect={selectState}
+          onColorChange={setStateColor}
+          onInitialStateChange={setInitialState}
         />
+      }
 
-        {/* Kvantumkapuk */}
-        <GatePalette
-          disabled={target === null}
-          onAdd={(gate) => {
-            if (target === null) return;
-
-            stopPlayback();
-            addGate(
-              target,
-              gate.label,
-              gate.matrix,
-              gate.parameter,
-            );
+      center={
+        <Canvas
+          style={{ width: "100%", height: "100%" }}
+          camera={{
+            position: [3, 3, 2],
+            fov: 45,
+            up: [0, 0, 1],
           }}
-        />
+        >
+          <color attach="background" args={["#101827"]} />
 
-        {/* Kapusor szerkesztése */}
-        <GateSequenceEditor
-          gates={activeGates}
-          stepIndex={activeStepIndex}
-          disabled={target === null}
-          onRemove={(id) => {
-            if (target === null) return;
+          <BlochSphere
+            vectors={vectors}
+            selectedStateId={selectedState?.id}
+            mergeAnimationKey={mergeAnimationKey}
+            gateEditRevision={
+              simulator.gateEditRevision + simulator.instantJumpRevision
+            }
+            gateMoveRevision={simulator.gateMoveRevision}
+          />
 
-            stopPlayback();
-            removeGate(target, id);
-          }}
-          onMove={(id, direction) => {
-            if (target === null) return;
+          <OrbitControls
+            target={[0, 0, 0]}
+            enablePan={false}
+            enableDamping
+            minDistance={2}
+            maxDistance={8}
+          />
+        </Canvas>
+      }
 
-            stopPlayback();
-            moveGate(target, id, direction);
-          }}
-          onUpdateAngle={(id, degrees) => {
-            if (target === null) return;
+      right={
+        selectedState && selectedCurrentState ? (
+          <StateInfoPanel
+            state={selectedCurrentState}
+            label={STATE_LABELS[selectedState.id - 1]}
+            color={selectedState.color}
+          />
+        ) : null
+      }
 
-            stopPlayback();
-            updateGateAngle(target, id, degrees);
-          }}
-          onClear={() => {
-            if (target === null) return;
+      bottom={
+        <>
+          {/* Módválasztó és lejátszás */}
+          <div className="sim-bottom-header">
+            <ModeSelector
+              mode={simulator.mode}
+              selectedState={selectedState}
+              onChange={(mode) => {
+                stopPlayback();
+                setMode(mode);
+              }}
+            />
 
-            stopPlayback();
-            clearGates(target);
-          }}
-        />
+            <PlaybackControls
+              stepIndex={activeStepIndex}
+              totalSteps={activeGates.length}
+              isPlaying={isPlaying}
+              disabled={target === null}
+              onPrevious={() => {
+                if (target !== null) previousStep(target);
+              }}
+              onNext={() => {
+                if (target !== null) nextStep(target);
+              }}
+              onPlayPause={togglePlayback}
+              onReset={() => {
+                stopPlayback();
+                if (target !== null) resetSteps(target);
+              }}
+            />
+          </div>
 
-        {/* Lejátszásvezérlés */}
-        <PlaybackControls
-          stepIndex={activeStepIndex}
-          totalSteps={activeGates.length}
-          isPlaying={isPlaying}
-          disabled={target === null}
-          onPrevious={() => {
-            if (target !== null) previousStep(target);
-          }}
-          onNext={() => {
-            if (target !== null) nextStep(target);
-          }}
-          onPlayPause={togglePlayback}
-          onReset={() => {
-            stopPlayback();
+          {/* Kapupaletta */}
+          <div className="sim-gate-palette">
+            <GatePalette
+              disabled={target === null}
+              onAdd={(gate) => {
+                if (target === null) return;
 
-            if (target !== null) resetSteps(target);
-          }}
-        />
-      </div>
-    </div>
+                stopPlayback();
+                addGate(
+                  target,
+                  gate.label,
+                  gate.matrix,
+                  gate.parameter,
+                );
+              }}
+            />
+          </div>
+
+          {/* Állapotvektorok kezelése */}
+          <div className="sim-state-selector">
+            <StateSelector
+              states={simulator.states}
+              selectedStateId={selectedState?.id}
+              canAdd={nextIndex !== -1}
+              onSelect={selectState}
+              onRemove={deleteState}
+              onAdd={() => {
+                if (nextIndex === -1) return;
+
+                stopPlayback();
+                addState(INITIAL_STATE_PRESETS[nextIndex]());
+              }}
+            />
+          </div>
+
+
+          {/* Composer-szerű kapusorok */}
+          <CircuitRows
+            simulator={simulator}
+            selectedStateId={selectedState?.id}
+            onSelectState={selectState}
+            onInsertGate={(rowTarget, index, gate) => {
+              stopPlayback();
+              insertGate(
+                rowTarget,
+                index,
+                gate.label,
+                gate.matrix,
+                gate.parameter,
+              );
+            }}
+            onMoveGate={(source, destination, id, index) => {
+              stopPlayback();
+
+              if (source === destination) {
+                moveGateTo(source, id, index);
+              } else if (
+                typeof source === "number" &&
+                typeof destination === "number"
+              ) {
+                moveGateBetweenRows(source, destination, id, index);
+              }
+            }}
+            onJumpToStep={(rowTarget, stepIndex) => {
+              stopPlayback();
+              jumpToStep(rowTarget, stepIndex);
+            }}
+
+            onDeleteGate={(rowTarget, gateId) => {
+              stopPlayback();
+              removeGate(rowTarget, gateId);
+            }}
+            onUpdateGateAngle={(rowTarget, gateId, degrees) => {
+              stopPlayback();
+              updateGateAngle(rowTarget, gateId, degrees);
+            }}
+            onClearGates={(rowTarget) => {
+              stopPlayback();
+              clearGates(rowTarget);
+            }}
+          />
+        </>
+      }
+    />
   );
 }
