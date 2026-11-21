@@ -99,3 +99,33 @@
   text-align: center;
   font-size: 11px;
 }
+
+.gate-popover-input-wrap {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 20px;
+}
+
+.gate-popover-input-wrap .gate-popover-input {
+  width: 100%;
+  height: 100%;
+  padding: 0 10px 0 2px;
+  box-sizing: border-box;
+}
+
+.gate-popover-degree {
+  position: absolute;
+  right: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+
+  color: #64748b;
+  font-family: "Inter", sans-serif;
+  font-size: 10px;
+  line-height: 1;
+
+  pointer-events: none;
+  user-select: none;
+}

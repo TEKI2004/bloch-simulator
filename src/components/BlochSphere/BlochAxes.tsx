@@ -29,8 +29,6 @@ export default function BlochAxes() {
       <Line points={[[0, 0, 0], [0, 0, 1.3]]} color="#94A3B8" lineWidth={2} transparent opacity={0.9} />
 
 
-
-
       {/* X */}
       <mesh position={[1.325, 0, 0]} rotation={[0, 0, -Math.PI / 2]}>
         <coneGeometry args={[0.0525, 0.15, 16]} />
@@ -60,6 +58,23 @@ export default function BlochAxes() {
 
       <Html position={[1.15, 0, 0.2]} center style={{ ...labelStyle, fontStyle: "normal", color: "#94A3B8" }}>|+⟩</Html>
       <Html position={[-1.15, 0, 0.2]} center style={{ ...labelStyle, fontStyle: "normal", color: "#94A3B8" }}>|−⟩</Html>
+
+      {/* Y tengely – sajátállapotok */}
+      <Html
+        position={[0, 1.15, 0.2]}
+        center
+        style={{ ...labelStyle, fontStyle: "normal", color: "#94A3B8" }}
+      >
+        |+i⟩
+      </Html>
+
+      <Html
+        position={[0, -1.15, 0.2]}
+        center
+        style={{ ...labelStyle, fontStyle: "normal", color: "#94A3B8" }}
+      >
+        |−i⟩
+      </Html>
 
     </group>
   );

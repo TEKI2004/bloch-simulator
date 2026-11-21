@@ -158,22 +158,32 @@ export default function GatePopover({
                 }`}
             style={{ visibility: "hidden" }}
         >
+
             {hasParameter && (
-                <input
-                    ref={inputRef}
-                    className="gate-popover-input"
-                    type="text"
-                    inputMode="decimal"
-                    value={angle}
-                    aria-label="Forgásszög fokban"
-                    onChange={(event) => setAngle(event.target.value)}
-                    onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                            applyAngle();
-                            onClose();
-                        }
-                    }}
-                />
+                <div className="gate-popover-input-wrap">
+                    <input
+                        ref={inputRef}
+                        className="gate-popover-input"
+                        type="text"
+                        inputMode="decimal"
+                        value={angle}
+                        aria-label="Forgásszög fokban"
+                        onChange={(event) => setAngle(event.target.value)}
+                        onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                                applyAngle();
+                                onClose();
+                            }
+                        }}
+                    />
+
+                    <span
+                        className="gate-popover-degree"
+                        aria-hidden="true"
+                    >
+                        °
+                    </span>
+                </div>
             )}
 
             <button
