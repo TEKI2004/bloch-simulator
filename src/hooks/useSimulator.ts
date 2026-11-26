@@ -270,6 +270,7 @@ export function useSimulator() {
         target,
         (sequence) => {
           const gates = [...sequence.gates];
+
           const oldIndex = gates.findIndex((gate) => gate.id === id);
 
           if (oldIndex === -1) return sequence;
@@ -283,7 +284,19 @@ export function useSimulator() {
           const [gate] = gates.splice(oldIndex, 1);
           gates.splice(newIndex, 0, gate);
 
-          return { ...sequence, gates };
+          let stepIndex = sequence.stepIndex;
+
+          if (oldIndex >= stepIndex && newIndex < stepIndex) {
+            stepIndex++;
+          } else if (oldIndex < stepIndex && newIndex >= stepIndex) {
+            stepIndex--;
+          }
+
+          return {
+            ...sequence,
+            gates,
+            stepIndex,
+          };
         },
         "edit",
       ),

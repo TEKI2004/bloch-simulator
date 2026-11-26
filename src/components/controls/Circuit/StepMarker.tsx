@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 
 type Props = {
     target: string | number;
+    rowLayoutKey: string;
     stepIndex: number;
     gateCount: number;
     gateEditRevision: number;
@@ -23,7 +24,7 @@ const GATE_GAP = 16;
 
 const STEP_DURATION = 450;
 const DRAG_DURATION = 120;
-
+const FLIP_DURATION = 280;
 
 function getMarkerPosition(
     target: string | number,
@@ -111,6 +112,7 @@ function getMarkerPosition(
 
 export default function StepMarker({
     target,
+    rowLayoutKey,
     stepIndex,
     gateCount,
     gateEditRevision,
@@ -142,15 +144,48 @@ export default function StepMarker({
         overlay.style.clipPath =
             `inset(${position.clipTop}px 0px ${position.clipBottom}px 0px)`;
 
-        marker.style.transition = duration > 0
-            ? `left ${duration}ms ${duration === DRAG_DURATION ? "ease" : "ease-in-out"
-            }`
-            : "none";
+        const easing =
+            duration === DRAG_DURATION
+                ? "ease"
+                : "ease-in-out";
+
+        marker.style.transition =
+            duration > 0
+                ? `left ${duration}ms ${easing}`
+                : "none";
 
         marker.style.left = `${position.left}px`;
         marker.style.top = `${position.top}px`;
     }, [target, stepIndex, hoveredSlot]);
 
+    const updateLayout = useCallback(() => {
+        const overlay = overlayRef.current;
+        const marker = markerRef.current;
+
+        const position = getMarkerPosition(
+            target,
+            stepIndex,
+            hoveredSlot,
+        );
+
+        if (!overlay || !marker || !position) return;
+
+        const { viewport } = position;
+
+        overlay.style.left = `${viewport.left}px`;
+        overlay.style.top = `${viewport.top}px`;
+        overlay.style.width = `${viewport.width}px`;
+        overlay.style.height = `${viewport.height}px`;
+
+        overlay.style.clipPath =
+            `inset(${position.clipTop}px 0px ${position.clipBottom}px 0px)`;
+
+        marker.style.top = `${position.top}px`;
+    }, [target, stepIndex, hoveredSlot]);
+
+    useLayoutEffect(() => {
+        updateLayout();
+    }, [rowLayoutKey, updateLayout]);
 
     useLayoutEffect(() => {
         const marker = markerRef.current;
@@ -168,25 +203,15 @@ export default function StepMarker({
         const jumpChanged =
             old !== null && old.jump !== instantJumpRevision;
 
-        // Kapu törlése a már végrehajtott szakaszból
-        const deletedBeforeStep =
-            old !== null &&
-            editChanged &&
-            old.count === gateCount + 1 &&
-            old.step === stepIndex + 1;
-
-        // Teljes kapusor törlése
-        const clearedSequence =
-            old !== null &&
-            editChanged &&
-            old.count > 0 &&
-            gateCount === 0 &&
-            old.step > 0 &&
-            stepIndex === 0;
-
         // Normál előre-/visszaléptetés
         const normalStep =
-            stepChanged && !editChanged && !jumpChanged;
+            stepChanged &&
+            !jumpChanged &&
+            (
+                !editChanged ||
+                (old !== null && gateCount >= old.count)
+            );
+
 
         // Drag-előnézet változása
         const previewChanged =
@@ -194,7 +219,9 @@ export default function StepMarker({
 
         let duration = 0;
 
-        if (normalStep || deletedBeforeStep || clearedSequence) {
+        if (editChanged) {
+            duration = FLIP_DURATION;
+        } else if (normalStep) {
             duration = STEP_DURATION;
         } else if (previewChanged) {
             duration = DRAG_DURATION;
@@ -232,33 +259,6 @@ export default function StepMarker({
         const bottomPanel = track?.closest<HTMLElement>(
             ".sim-bottom",
         );
-
-        // Csak az overlay elhelyezkedését és a marker
-        // függőleges pozícióját frissíti.
-        // A vízszintes animációt nem szakítja meg.
-        function updateLayout() {
-            const overlay = overlayRef.current;
-            const marker = markerRef.current;
-
-            const position = getMarkerPosition(
-                target,
-                stepIndex,
-                hoveredSlot,
-            );
-
-            if (!overlay || !marker || !position) return;
-
-            const { viewport } = position;
-
-            overlay.style.left = `${viewport.left}px`;
-            overlay.style.top = `${viewport.top}px`;
-            overlay.style.width = `${viewport.width}px`;
-            overlay.style.height = `${viewport.height}px`;
-            overlay.style.clipPath =
-                `inset(${position.clipTop}px 0px ${position.clipBottom}px 0px)`;
-
-            marker.style.top = `${position.top}px`;
-        }
 
         let lastScrollLeft = scrollContainer?.scrollLeft ?? 0;
 
@@ -304,7 +304,7 @@ export default function StepMarker({
 
             resizeObserver.disconnect();
         };
-    }, [target, stepIndex, hoveredSlot, updateMarkerPosition]);
+    }, [target, updateLayout, updateMarkerPosition]);
 
     return createPortal(
         <div

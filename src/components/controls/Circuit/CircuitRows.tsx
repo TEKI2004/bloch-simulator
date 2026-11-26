@@ -137,11 +137,13 @@ export default function CircuitRows({
     const [editingGate, setEditingGate] =
         useState<EditingGate | null>(null);
 
-    const { prepareDropCommit } =
-        useGateFlipAnimation(
-            rowsRef,
-            simulator.gateEditRevision,
-        );
+    const {
+        prepareDropCommit,
+        prepareGateDeletion,
+    } = useGateFlipAnimation(
+        rowsRef,
+        simulator.gateEditRevision,
+    );
 
     const dragDrop = useCircuitDragDrop({
         rootRef: rowsRef,
@@ -166,6 +168,10 @@ export default function CircuitRows({
                 gates: state.individualGates,
                 stepIndex: state.individualStepIndex,
             }));
+
+    const rowLayoutKey = rows
+        .map((row) => row.target)
+        .join("|");
 
     const nextStateId = Array.from(
         { length: MAX_STATES },
@@ -278,17 +284,12 @@ export default function CircuitRows({
                 <StepMarker
                     key={row.target}
                     target={row.target}
+                    rowLayoutKey={rowLayoutKey}
                     stepIndex={row.stepIndex}
                     gateCount={row.gates.length}
-                    gateEditRevision={
-                        simulator.gateEditRevision
-                    }
-                    instantJumpRevision={
-                        simulator.instantJumpRevision
-                    }
-                    hoveredSlot={
-                        dragDrop.hoveredSlot
-                    }
+                    gateEditRevision={simulator.gateEditRevision}
+                    instantJumpRevision={simulator.instantJumpRevision}
+                    hoveredSlot={dragDrop.hoveredSlot}
                 />
             ))}
 
@@ -309,7 +310,10 @@ export default function CircuitRows({
                             degrees,
                         )
                     }
+
                     onDelete={() => {
+                        prepareGateDeletion();
+
                         onDeleteGate(
                             editingGate.target,
                             editingGate.gateId,
@@ -317,6 +321,7 @@ export default function CircuitRows({
 
                         setEditingGate(null);
                     }}
+
                 />
             )}
         </div>

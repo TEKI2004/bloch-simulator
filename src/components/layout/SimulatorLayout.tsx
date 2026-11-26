@@ -71,7 +71,7 @@ export default function SimulatorLayout({
                         alt=""
                         className="sim-brand-logo"
                     />
-                    <span>Bloch Sphere Simulator</span>
+                    <span>Bloch-gömb szimulátor</span>
                 </div>
             </header>
 

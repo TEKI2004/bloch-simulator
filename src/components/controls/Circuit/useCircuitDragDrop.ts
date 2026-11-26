@@ -21,7 +21,7 @@ type DropPosition = {
 type Props = {
   rootRef: RefObject<HTMLDivElement | null>;
 
-  prepareDropCommit: (movedId?: string) => void;
+  prepareDropCommit: (movedId?: string, destination?: DropPosition, source?: GateTarget) => void;
 
   onInsertGate: (target: GateTarget, index: number, gate: GateOption) => void;
 
@@ -105,22 +105,39 @@ function getTargetAtY(root: HTMLElement | null, y: number, fallback: GateTarget)
 }
 
 function getDropPosition(root: HTMLElement | null, move: ActiveMove, x: number, y: number): DropPosition | null {
-  const element = document.elementFromPoint(x, y);
+  if (!root) return null;
 
-  // A későbbi ghost track ne legyen
-  // kapuáthelyezési célpont.
-  if (element?.closest(".qc-add-track")) {
-    return null;
+  const element = document.elementFromPoint(x, y);
+  const overAddTrack = Boolean(element?.closest(".qc-add-track"));
+
+  let target: GateTarget;
+
+  if (overAddTrack) {
+    // A ghost track a legalsó valódi kapusor
+    // meghosszabbításaként működik drag közben.
+    const rows = root.querySelectorAll<HTMLElement>(".qc-row[data-row-target]");
+
+    const lastRow = rows.item(rows.length - 1);
+    const value = lastRow?.dataset.rowTarget;
+
+    if (!value) return null;
+
+    target = value === "shared" ? "shared" : Number(value);
+
+    if (typeof target === "number" && !Number.isInteger(target)) {
+      return null;
+    }
+  } else {
+    target = getTargetAtY(root, y, move.target);
   }
 
-  const target = getTargetAtY(root, y, move.target);
-
+  // A vízszintes pozíciót MINDIG
+  // az aktuális egér X koordinátája határozza meg.
   const index = getDropIndexAtX(root, target, x);
 
   if (index === null) return null;
 
-  // Saját maga elé vagy mögé ejtve
-  // nem történik tényleges átrendezés.
+  // Saját pozícióba visszahúzás.
   if (target === move.target && (index === move.sourceIndex || index === move.sourceIndex + 1)) {
     return null;
   }
@@ -173,7 +190,6 @@ export function useCircuitDragDrop({ rootRef, prepareDropCommit, onInsertGate, o
 
       event.preventDefault();
       event.stopPropagation();
-
       const position = getDropPosition(rootRef.current, move, event.clientX, event.clientY);
 
       if (event.dataTransfer) {
@@ -194,12 +210,16 @@ export function useCircuitDragDrop({ rootRef, prepareDropCommit, onInsertGate, o
 
       const position = getDropPosition(rootRef.current, move, event.clientX, event.clientY);
 
+      // Először elmentjük a placeholder és
+      // a kapuk jelenlegi pozícióját.
+      if (position) {
+        prepareDropCommit(move.id, position, move.target);
+      }
       activeMove.current = null;
       setHoveredSlot(null);
 
+      // Ezután történik meg a kapusor átrendezése.
       if (position) {
-        prepareDropCommit(move.id);
-
         moveCallbackRef.current(move.target, position.target, move.id, position.index);
       }
     }
