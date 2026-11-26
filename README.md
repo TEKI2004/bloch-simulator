@@ -1,32 +1,47 @@
-# React + TypeScript + Vite
+# Bloch-gömb szimulátor
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Interaktív, háromdimenziós Bloch-gömb szimulátor egykvantumbites kvantumállapotok és kvantumkapuk hatásának szemléltetésére.
 
-Currently, two official plugins are available:
+A projekt a BME VIK *Kvantuminformatikai alkalmazások* tantárgy házi feladataként készült.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Funkciók
 
-## React Compiler
+- Legfeljebb 4 állapotvektor egyidejű megjelenítése
+- Tetszőleges kezdőállapot megadása Bloch-szögekkel (θ, φ) vagy komplex amplitúdókkal (α, β)
+- 12 kvantumkapu: X, Y, Z, H, S, S†, T, T†, P, Rx, Ry és Rz
+- Közös és egyéni kvantumkapusorok, drag-and-drop szerkesztéssel
+- Lépésenkénti és automatikus végrehajtás, animált állapotváltozásokkal és pályagörbékkel
+- Állapotinformációk, mérési valószínűségek, Bloch-koordináták és kapumátrixok megjelenítése
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Technológiák
 
-## Expanding the Oxlint configuration
+React, TypeScript, Three.js, React Three Fiber, React Three Drei és Vite.
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## Fejlesztői futtatás
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+Szükséges: Node.js és pnpm.
+
+```bash
+git clone https://github.com/TEKI2004/bloch-simulator.git
+cd bloch-simulator
+pnpm install
+pnpm dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Az alkalmazás ezután a terminálban megjelenő helyi címen érhető el.
+
+## Offline build
+
+Az önálló, offline használható változat elkészítése:
+
+```bash
+pnpm build
+```
+
+A Vite a `vite-plugin-singlefile` segítségével a JavaScript- és CSS-kódot egyetlen HTML-fájlba építi.
+
+A `dist` mappában található `index.html` Windows rendszeren, Chrome vagy Edge böngészővel, internetkapcsolat és fejlesztőkörnyezet nélkül megnyitható. A `dist` mappa további szükséges fájljait is meg kell őrizni.
+
+## Dokumentáció
+
+A projekt részletesebb működését, matematikai hátterét és megvalósítását a házi feladathoz készített dokumentáció ismerteti.
